@@ -1,11 +1,16 @@
 "use client";
 
 import { useLayoutEffect, useRef } from "react";
+import Image from "next/image";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import HeroRig3D from "./HeroRig3D";
 import { rigScroll } from "./rigScrollBus";
 import styles from "./CinematicScene.module.css";
+
+import stackCard from "@/public/assets/stack-card.png";
+import expertiseCard from "@/public/assets/expertise-card.png";
+import focusCard from "@/public/assets/focus-card.png";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -15,6 +20,43 @@ const ABOUT_META = [
   { label: "Core stack", value: "React · Next.js · Node · PostgreSQL" },
   { label: "Status", value: "Open to select projects", gold: true },
 ];
+
+/* Shared About copy — rendered once inside the pinned stage (desktop) and
+   once in the mobile flow tail; `item` is the reveal-target data attribute */
+function AboutBody({ item }: { item: string }) {
+  const ip = { [item]: "" };
+  return (
+    <>
+      <p className={styles.eyebrow} {...ip}>
+        <span />
+        About Me
+      </p>
+
+      <h2 className={styles.aboutTitle} {...ip}>
+        Building premium digital products, end to end.
+      </h2>
+
+      <p className={styles.aboutLede} {...ip}>
+        I’m Kağan — a full-stack developer focused on refined,
+        high-performance software. From system architecture to the final
+        pixel, I obsess over the details that make a product feel effortless,
+        fast and quietly expensive.
+      </p>
+
+      <ul className={styles.aboutMeta}>
+        {ABOUT_META.map((row) => (
+          <li key={row.label} {...ip}>
+            <span className={styles.metaLabel}>{row.label}</span>
+            <span className={row.gold ? styles.metaValueGold : styles.metaValue}>
+              {row.gold && <i className={styles.metaDot} />}
+              {row.value}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
 
 /**
  * One pinned, scrubbed scene: Hero ⟶ About.
@@ -113,21 +155,20 @@ export default function CinematicScene() {
         }
       );
 
-      /* ── Mobile: same pinned 3D journey, portrait-format choreography.
-         Copy retires upward, the rig travels to its split composition
-         (core left / cards right) and the About copy rises from below. ── */
+      /* ── Mobile: pinned 3D journey — copy retires, the cards sink away
+         and the rig settles alone, big and centered. The readable card
+         column + About copy live in the flow tail right below the stage. ── */
       mm.add(
         "(max-width: 1023px) and (prefers-reduced-motion: no-preference)",
         () => {
-          gsap.set("[data-about-item]", { autoAlpha: 0, y: 44 });
           gsap.set("[data-veil-right]", { opacity: 0 });
 
           const tl = gsap.timeline({
             defaults: { ease: "none" },
             scrollTrigger: {
-              trigger: scene,
+              trigger: "[data-stage]",
               start: "top top",
-              end: "+=170%",
+              end: "+=150%",
               scrub: 1.1,
               pin: "[data-stage]",
               anticipatePin: 1,
@@ -155,19 +196,25 @@ export default function CinematicScene() {
             { filter: "brightness(0.55) saturate(0.9)", duration: 0.5 },
             0.1
           );
-          tl.to("[data-veil-right]", { opacity: 1, duration: 0.3 }, 0.45);
-          tl.to(
-            "[data-about-item]",
-            {
-              autoAlpha: 1,
-              y: 0,
-              stagger: 0.06,
-              duration: 0.3,
-              ease: "power2.out",
-            },
-            0.6
-          );
+          tl.to("[data-veil-right]", { opacity: 0.85, duration: 0.3 }, 0.5);
           tl.to({}, { duration: 0.1 });
+
+          // tail: each card / About block rises as it enters the viewport.
+          // "top bottom-=24" so even items resting at the very bottom of the
+          // document still cross their trigger line.
+          gsap.utils.toArray<HTMLElement>("[data-tail-item]").forEach((el) => {
+            gsap.from(el, {
+              autoAlpha: 0,
+              y: 42,
+              duration: 0.7,
+              ease: "power2.out",
+              scrollTrigger: {
+                trigger: el,
+                start: "top bottom-=24",
+                toggleActions: "play none none reverse",
+              },
+            });
+          });
 
           return () => {
             rigScroll.progress = 0;
@@ -271,37 +318,9 @@ export default function CinematicScene() {
           </div>
         </div>
 
-        {/* ── About ── */}
+        {/* ── About (desktop: inside the pinned stage) ── */}
         <div id="about" className={styles.aboutContent} data-about>
-          <p className={styles.eyebrow} data-about-item>
-            <span />
-            About Me
-          </p>
-
-          <h2 className={styles.aboutTitle} data-about-item>
-            Building premium digital products, end to end.
-          </h2>
-
-          <p className={styles.aboutLede} data-about-item>
-            I’m Kağan — a full-stack developer focused on refined,
-            high-performance software. From system architecture to the final
-            pixel, I obsess over the details that make a product feel
-            effortless, fast and quietly expensive.
-          </p>
-
-          <ul className={styles.aboutMeta}>
-            {ABOUT_META.map((row) => (
-              <li key={row.label} data-about-item>
-                <span className={styles.metaLabel}>{row.label}</span>
-                <span
-                  className={row.gold ? styles.metaValueGold : styles.metaValue}
-                >
-                  {row.gold && <i className={styles.metaDot} />}
-                  {row.value}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <AboutBody item="data-about-item" />
         </div>
 
         {/* ── Scroll cue ── */}
@@ -310,6 +329,38 @@ export default function CinematicScene() {
           <span className={styles.cueTrack}>
             <span className={styles.cueThumb} />
           </span>
+        </div>
+      </div>
+
+      {/* ── Mobile tail: after the pinned journey the three cards stack
+          large & readable under the rig, then the About copy flows in ── */}
+      <div className={styles.mobileTail}>
+        <div className={styles.tailCards}>
+          <div className={styles.tailCard} data-tail-item>
+            <Image
+              src={stackCard}
+              alt="Stack: React, Next.js, TypeScript, Node.js, PostgreSQL, Tailwind CSS"
+              sizes="80vw"
+            />
+          </div>
+          <div className={styles.tailCard} data-tail-item>
+            <Image
+              src={expertiseCard}
+              alt="Expertise: Frontend, Backend, UI Systems"
+              sizes="80vw"
+            />
+          </div>
+          <div className={styles.tailCard} data-tail-item>
+            <Image
+              src={focusCard}
+              alt="Focus: Performance, Scalability, User Experience"
+              sizes="80vw"
+            />
+          </div>
+        </div>
+
+        <div className={styles.aboutFlow}>
+          <AboutBody item="data-tail-item" />
         </div>
       </div>
     </section>

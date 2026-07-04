@@ -78,19 +78,23 @@ const BADGE: Triple = {
 const M_CAM = {
   hero: { pos: [0, -0.4, 7.9], look: [0, -0.32, 0] },
   mid: { pos: [0, -0.1, 8.7], look: [0, 0, 0] },
-  about: { pos: [0, 0.2, 9.4], look: [0, 0.24, 0] },
+  about: { pos: [0, -0.05, 8.4], look: [0, 0, 0] },
 };
 
 const M_CORE: Triple = {
   hero: { pos: [0, -1.32, 0], rot: [0, -0.06, 0], scale: 0.78 },
   mid: { pos: [0, -0.4, -0.3], rot: [0.02, 0.1, -0.01], scale: 0.66 },
-  about: { pos: [-0.6, 1.15, -0.35], rot: [0, 0.09, 0], scale: 0.45 },
+  /* final: he stands alone, big and centered — portrait + glass +
+     platform + badge fill the frame; the cards hand off to the DOM
+     column that scrolls in right below the pinned stage */
+  about: { pos: [0, -0.12, 0], rot: [0, 0.05, 0], scale: 0.66 },
 };
 
 const M_CARDSG: Triple = {
   hero: { pos: [0, -1.32, 0], rot: [0, -0.06, 0], scale: 0.66 },
   mid: { pos: [0, -0.35, -0.25], rot: [0.01, 0.08, 0], scale: 0.56 },
-  about: { pos: [0.58, 1.15, -0.25], rot: [0, 0.03, 0], scale: 0.55 },
+  /* cards sink below the frame during the second half of the journey */
+  about: { pos: [0, -5.2, -0.2], rot: [0, 0, 0], scale: 0.55 },
 };
 
 /* pointer parallax amplitude per layer (world units, sign = direction) */

@@ -432,6 +432,14 @@
 }
 
 /* ════════════════════════════════════════════════
+   Mobile flow tail (hidden everywhere by default;
+   enabled in the mobile-animated media block)
+   ════════════════════════════════════════════════ */
+.mobileTail {
+  display: none;
+}
+
+/* ════════════════════════════════════════════════
    Scroll cue
    ════════════════════════════════════════════════ */
 .cue {
@@ -652,13 +660,53 @@
     display: none;
   }
 
-  /* About copy — lower half of the pinned stage */
+  /* the in-stage About belongs to the desktop composition */
   .aboutContent {
-    left: var(--gutter);
-    right: var(--gutter);
-    top: 54svh;
-    transform: none;
-    max-width: none;
+    display: none;
+  }
+
+  /* flow tail: big readable cards, then the About copy */
+  .mobileTail {
+    display: block;
+    position: relative;
+    z-index: 5;
+    background: var(--bg);
+    padding: 30px var(--gutter) 76px;
+  }
+
+  .tailCards {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .tailCard {
+    width: min(76vw, 370px);
+    filter: drop-shadow(0 22px 34px rgba(0, 0, 0, 0.55));
+  }
+
+  .tailCard img {
+    width: 100%;
+    height: auto;
+  }
+
+  .tailCard:nth-child(1) {
+    transform: rotate(-1.6deg) translateX(-3%);
+  }
+
+  .tailCard:nth-child(2) {
+    transform: rotate(1.3deg) translateX(4%);
+  }
+
+  .tailCard:nth-child(3) {
+    transform: rotate(-1deg) translateX(-2%);
+  }
+
+  .aboutFlow {
+    margin-top: 46px;
+    padding-top: 30px;
+    border-top: 1px solid var(--line-soft);
   }
 
   .eyebrow {
