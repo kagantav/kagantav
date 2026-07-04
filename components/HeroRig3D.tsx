@@ -550,13 +550,16 @@ function RigScene({
       <group ref={core}>
         <PlatformPNG groupRef={plat} glowMatRef={glowMat} />
 
-        {/* glass frame — object behind the person */}
+        {/* glass frame — object behind the person; its lower edge dissolves
+            into the platform bowl so it never visibly pierces the disc while
+            drifting during the scroll travel */}
         <group ref={glass}>
           <AssetPlane
             url="/assets/glass-frame.png"
             height={3.62}
             renderOrder={2}
             opacity={0.96}
+            fadeBottom
           />
         </group>
 
