@@ -1,0 +1,97 @@
+:root {
+  /* ── Noir & Gold system ─────────────────────────── */
+  --bg: #060403;
+  --bg-raise: #0b0806;
+  --ink: #ece4d4;
+  --ink-dim: #a99e8a;
+  --ink-faint: #6f6654;
+
+  --gold: #d8a94f;
+  --gold-bright: #f3d791;
+  --gold-deep: #8a6427;
+  --gold-ember: #b97f2e;
+
+  --line: rgba(216, 169, 79, 0.16);
+  --line-soft: rgba(216, 169, 79, 0.09);
+
+  --metal-grad: linear-gradient(
+    100deg,
+    #f7f3ea 0%,
+    #cfc7b6 24%,
+    #98917f 46%,
+    #f4efe2 62%,
+    #b7ad99 82%,
+    #e9e2d2 100%
+  );
+  --gold-grad: linear-gradient(
+    100deg,
+    #f3d791 0%,
+    #d8a94f 38%,
+    #a87c33 62%,
+    #edc87b 100%
+  );
+
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+
+  --header-h: 84px;
+  --gutter: clamp(24px, 5.2vw, 96px);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-weight: 300;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: clip;
+}
+
+::selection {
+  background: rgba(216, 169, 79, 0.32);
+  color: #fff8ea;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+img,
+video {
+  display: block;
+  max-width: 100%;
+}
+
+/* Thin gold scrollbar to match the finish */
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #070503;
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #4a3714, #241a0a);
+  border-radius: 8px;
+  border: 2px solid #070503;
+}

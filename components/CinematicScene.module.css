@@ -1,0 +1,578 @@
+/* ════════════════════════════════════════════════
+   Scene shell
+   ════════════════════════════════════════════════ */
+.scene {
+  position: relative;
+}
+
+.stage {
+  position: relative;
+  height: 100svh;
+  min-height: 640px;
+  overflow: clip;
+  background: var(--bg);
+}
+
+/* ════════════════════════════════════════════════
+   Backdrop
+   ════════════════════════════════════════════════ */
+.backdrop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  will-change: transform, filter;
+}
+
+/* L1 — subtle overall dim (never fully black; gold waves stay visible) */
+.dim {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.36);
+}
+
+/* L2 — readability: hero copy sits on the left */
+.veilLeft {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    98deg,
+    rgba(6, 4, 3, 0.88) 0%,
+    rgba(6, 4, 3, 0.6) 26%,
+    rgba(6, 4, 3, 0.18) 52%,
+    rgba(6, 4, 3, 0) 72%
+  );
+}
+
+/* L3 — calms bright particles / vertical lights near the top center */
+.topGlare {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    72% 46% at 50% -6%,
+    rgba(3, 2, 1, 0.62) 0%,
+    rgba(3, 2, 1, 0.3) 52%,
+    transparent 78%
+  );
+}
+
+/* L4 — warm amber pool travelling with the rig (GSAP moves it) */
+.amberFollow {
+  position: absolute;
+  left: 46vw;
+  right: -14vw;
+  top: 18vh;
+  bottom: -10vh;
+  background: radial-gradient(
+    48% 42% at 50% 62%,
+    rgba(222, 165, 66, 0.16) 0%,
+    rgba(190, 130, 45, 0.07) 48%,
+    transparent 74%
+  );
+  opacity: 0.85;
+  will-change: transform, opacity;
+}
+
+.veilBottom {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(6, 4, 3, 0.55) 0%,
+    transparent 22%,
+    transparent 68%,
+    rgba(6, 4, 3, 0.82) 100%
+  );
+}
+
+/* arrives with the About chapter — keeps copy readable on the right */
+.veilRight {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    262deg,
+    rgba(5, 3, 2, 0.9) 0%,
+    rgba(5, 3, 2, 0.62) 34%,
+    rgba(5, 3, 2, 0.12) 62%,
+    transparent 80%
+  );
+}
+
+.vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    130% 100% at 50% 42%,
+    transparent 52%,
+    rgba(3, 2, 1, 0.58) 100%
+  );
+}
+
+.grain {
+  position: absolute;
+  inset: -50%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  opacity: 0.045;
+  mix-blend-mode: overlay;
+}
+
+/* ════════════════════════════════════════════════
+   Hero copy — left column
+   ════════════════════════════════════════════════ */
+.heroContent {
+  position: absolute;
+  left: var(--gutter);
+  top: 50%;
+  transform: translateY(-50%);
+  width: min(600px, 46vw);
+  padding-top: calc(var(--header-h) * 0.4);
+  z-index: 4;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 20px;
+  border: 1px solid rgba(216, 169, 79, 0.3);
+  border-radius: 999px;
+  background: rgba(10, 7, 4, 0.55);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.badgeDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gold-bright);
+  box-shadow: 0 0 12px rgba(243, 215, 145, 1);
+  animation: pulse 2.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 6px rgba(243, 215, 145, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(243, 215, 145, 1);
+  }
+}
+
+.name {
+  margin-top: 30px;
+  width: max-content;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(48px, 5.9vw, 118px);
+  line-height: 1;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+  background: linear-gradient(
+    93deg,
+    #fdfaf2 0%,
+    #ded6c4 16%,
+    #b0a692 33%,
+    #7d7361 47%,
+    #d6cdba 58%,
+    #faf5e8 72%,
+    #b7ad99 88%,
+    #e8e1d1 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 3px 22px rgba(0, 0, 0, 0.65))
+    drop-shadow(0 0 52px rgba(216, 169, 79, 0.12));
+}
+
+.role {
+  margin-top: 22px;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(17px, 1.55vw, 26px);
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.meta {
+  margin-top: 16px;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
+.meta i {
+  font-style: normal;
+  color: var(--gold);
+  margin: 0 6px;
+}
+
+.lede {
+  margin-top: 26px;
+  max-width: 46ch;
+  font-size: clamp(15px, 1.05vw, 17px);
+  line-height: 1.75;
+  color: var(--ink-dim);
+}
+
+/* ── CTAs ── */
+.ctaRow {
+  margin-top: 38px;
+  display: flex;
+  align-items: center;
+  gap: 30px;
+}
+
+.ctaPrimary {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 17px 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(216, 169, 79, 0.55);
+  background:
+    linear-gradient(120deg, rgba(216, 169, 79, 0.16), rgba(216, 169, 79, 0.03) 60%),
+    rgba(10, 7, 4, 0.5);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold-bright);
+  overflow: hidden;
+  transition: box-shadow 0.4s ease, border-color 0.4s ease;
+}
+
+.ctaPrimary svg {
+  width: 12px;
+  height: 12px;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ctaPrimary::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 32%,
+    rgba(243, 215, 145, 0.25) 50%,
+    transparent 68%
+  );
+  transform: translateX(-130%);
+  transition: transform 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.ctaPrimary:hover {
+  border-color: rgba(243, 215, 145, 0.9);
+  box-shadow:
+    0 0 34px rgba(216, 169, 79, 0.3),
+    inset 0 0 18px rgba(216, 169, 79, 0.12);
+}
+
+.ctaPrimary:hover::before {
+  transform: translateX(130%);
+}
+
+.ctaPrimary:hover svg {
+  transform: translate(3px, -3px);
+}
+
+.ctaGhost {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 2px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  border-bottom: 1px solid rgba(216, 169, 79, 0.35);
+  transition: color 0.3s ease, border-color 0.3s ease;
+}
+
+.ctaGhost svg {
+  width: 12px;
+  height: 12px;
+}
+
+.ctaGhost:hover {
+  color: var(--gold-bright);
+  border-color: rgba(243, 215, 145, 0.85);
+}
+
+/* ════════════════════════════════════════════════
+   3D canvas — full stage; the rig travels in world space
+   ════════════════════════════════════════════════ */
+.canvasWrap {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* ════════════════════════════════════════════════
+   About — right column
+   ════════════════════════════════════════════════ */
+.aboutContent {
+  position: absolute;
+  left: 60vw;
+  right: var(--gutter);
+  top: 50%;
+  transform: translateY(-50%);
+  max-width: 600px;
+  z-index: 4;
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  background: var(--gold-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.eyebrow span {
+  width: 44px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--gold), transparent);
+  box-shadow: 0 0 10px rgba(216, 169, 79, 0.6);
+}
+
+.aboutTitle {
+  margin-top: 26px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(30px, 2.9vw, 50px);
+  line-height: 1.12;
+  letter-spacing: 0.005em;
+  background: var(--metal-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.aboutLede {
+  margin-top: 24px;
+  max-width: 52ch;
+  font-size: clamp(15px, 1.05vw, 17px);
+  line-height: 1.8;
+  color: var(--ink-dim);
+}
+
+.aboutMeta {
+  margin-top: 40px;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+
+.aboutMeta li {
+  display: grid;
+  grid-template-columns: 148px 1fr;
+  gap: 18px;
+  align-items: baseline;
+  padding: 15px 2px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.metaLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.metaValue,
+.metaValueGold {
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.metaValueGold {
+  color: var(--gold-bright);
+}
+
+.metaDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gold-bright);
+  box-shadow: 0 0 10px rgba(243, 215, 145, 0.95);
+}
+
+/* ════════════════════════════════════════════════
+   Scroll cue
+   ════════════════════════════════════════════════ */
+.cue {
+  position: absolute;
+  left: 50%;
+  bottom: 26px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  z-index: 5;
+}
+
+.cueLabel {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.44em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.cueTrack {
+  position: relative;
+  width: 1px;
+  height: 44px;
+  background: rgba(216, 169, 79, 0.18);
+  overflow: hidden;
+}
+
+.cueThumb {
+  position: absolute;
+  left: 0;
+  top: -40%;
+  width: 100%;
+  height: 40%;
+  background: linear-gradient(180deg, transparent, var(--gold-bright));
+  animation: cueFall 2.2s cubic-bezier(0.6, 0, 0.3, 1) infinite;
+}
+
+@keyframes cueFall {
+  0% {
+    top: -40%;
+  }
+  70%,
+  100% {
+    top: 110%;
+  }
+}
+
+/* ════════════════════════════════════════════════
+   Compact layout (< 1024px): natural flow, no pin
+   ════════════════════════════════════════════════ */
+/* Compact layout — also the graceful fallback when the OS asks for reduced
+   motion (no pin/scrub runs there, so the page must read top-to-bottom). */
+@media (max-width: 1023.98px), (prefers-reduced-motion: reduce) {
+  /* Confine the cinematic backdrop to the first viewport; the rest of the
+     page rests on clean near-black so content stays quiet and readable. */
+  .video,
+  .veilLeft,
+  .veilRight,
+  .vignette {
+    height: 100svh;
+    bottom: auto;
+  }
+
+  .veilBottom {
+    height: 100svh;
+    bottom: auto;
+    background: linear-gradient(
+      180deg,
+      rgba(6, 4, 3, 0.6) 0%,
+      transparent 24%,
+      transparent 46%,
+      var(--bg) 96%
+    );
+  }
+
+  .stage {
+    height: auto;
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    padding: calc(var(--header-h) + 40px) var(--gutter) 80px;
+    gap: 56px;
+  }
+
+  .heroContent {
+    position: static;
+    transform: none;
+    width: 100%;
+    max-width: 620px;
+    padding-top: 0;
+  }
+
+  .canvasWrap {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    height: min(120vw, 620px);
+  }
+
+  .amberFollow {
+    display: none;
+  }
+
+  .aboutContent {
+    position: static;
+    transform: none;
+    max-width: 620px;
+    padding-top: 26px;
+    border-top: 1px solid var(--line-soft);
+  }
+
+  .cue {
+    display: none;
+  }
+
+  .name {
+    font-size: clamp(34px, 9.4vw, 72px);
+    letter-spacing: 0.035em;
+  }
+
+  .aboutMeta li {
+    grid-template-columns: 118px 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .ctaRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 22px;
+  }
+
+  .role {
+    letter-spacing: 0.3em;
+  }
+
+  .aboutMeta li {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}

@@ -1,0 +1,174 @@
+.header {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 100;
+  height: var(--header-h);
+  background: linear-gradient(
+    180deg,
+    rgba(5, 3, 2, 0.72) 0%,
+    rgba(5, 3, 2, 0.28) 60%,
+    rgba(5, 3, 2, 0) 100%
+  );
+}
+
+.inner {
+  height: 100%;
+  padding: 0 var(--gutter);
+  display: flex;
+  align-items: center;
+  gap: clamp(36px, 5vw, 92px);
+}
+
+/* ── Brand — bare stylized KT strokes ──────────── */
+.brand {
+  display: inline-flex;
+  flex: none;
+  filter: drop-shadow(0 0 14px rgba(216, 169, 79, 0.25));
+  transition: filter 0.35s ease, transform 0.35s ease;
+}
+
+.brand svg {
+  width: 58px;
+  height: 36px;
+}
+
+.brand:hover {
+  filter: drop-shadow(0 0 22px rgba(243, 215, 145, 0.5));
+  transform: translateY(-1px);
+}
+
+/* ── Nav — SS-style: left-aligned row with a hairline underneath ── */
+.nav {
+  position: relative;
+  display: flex;
+  gap: clamp(26px, 3.4vw, 58px);
+  padding-bottom: 4px;
+}
+
+.navHairline {
+  position: absolute;
+  left: -6px;
+  right: -6px;
+  bottom: -6px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(216, 169, 79, 0.22) 10%,
+    rgba(216, 169, 79, 0.22) 90%,
+    transparent
+  );
+}
+
+.link,
+.linkActive {
+  position: relative;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  padding: 12px 2px;
+  transition: color 0.3s ease, text-shadow 0.3s ease;
+}
+
+.link:hover {
+  color: var(--ink);
+  text-shadow: 0 0 14px rgba(236, 228, 212, 0.35);
+}
+
+.linkActive {
+  color: #f5e9cd;
+  text-shadow: 0 0 16px rgba(243, 215, 145, 0.45);
+}
+
+.link::after,
+.linkActive::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  height: 2px;
+  width: 0;
+  transform: translateX(-50%);
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold-bright), transparent);
+  transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.link:hover::after {
+  width: 70%;
+  opacity: 0.55;
+}
+
+.linkActive::after {
+  width: 100%;
+  box-shadow: 0 0 14px rgba(243, 215, 145, 0.9);
+}
+
+/* ── CTA ───────────────────────────────────────── */
+.cta {
+  margin-left: auto;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 30px;
+  border-radius: 12px;
+  border: 1px solid rgba(216, 169, 79, 0.5);
+  background:
+    linear-gradient(120deg, rgba(216, 169, 79, 0.14), rgba(216, 169, 79, 0.02) 55%),
+    rgba(8, 6, 3, 0.42);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--gold-bright);
+  overflow: hidden;
+  box-shadow: 0 0 22px rgba(216, 169, 79, 0.12);
+  transition: border-color 0.35s ease, box-shadow 0.35s ease, color 0.35s ease;
+}
+
+.cta::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 30%,
+    rgba(243, 215, 145, 0.22) 50%,
+    transparent 70%
+  );
+  transform: translateX(-120%);
+  transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cta:hover {
+  border-color: rgba(243, 215, 145, 0.85);
+  box-shadow: 0 0 32px rgba(216, 169, 79, 0.32);
+  color: #fbeecb;
+}
+
+.cta:hover::before {
+  transform: translateX(120%);
+}
+
+.ctaDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gold-bright);
+  box-shadow: 0 0 12px rgba(243, 215, 145, 1);
+}
+
+/* ── Responsive ───────────────────────────────── */
+@media (max-width: 900px) {
+  .nav {
+    display: none;
+  }
+
+  .cta {
+    padding: 12px 20px;
+  }
+}
