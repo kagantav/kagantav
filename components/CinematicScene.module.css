@@ -485,9 +485,9 @@
 /* ════════════════════════════════════════════════
    Compact layout (< 1024px): natural flow, no pin
    ════════════════════════════════════════════════ */
-/* Compact layout — also the graceful fallback when the OS asks for reduced
-   motion (no pin/scrub runs there, so the page must read top-to-bottom). */
-@media (max-width: 1023.98px), (prefers-reduced-motion: reduce) {
+/* Static flow fallback — ONLY when the OS asks for reduced motion
+   (no pin/scrub runs there, so the page must read top-to-bottom). */
+@media (prefers-reduced-motion: reduce) {
   /* Confine the cinematic backdrop to the first viewport; the rest of the
      page rests on clean near-black so content stays quiet and readable. */
   .video,
@@ -549,7 +549,10 @@
   .cue {
     display: none;
   }
+}
 
+/* Width-only typography for compact screens (any motion preference) */
+@media (max-width: 1023.98px) {
   .name {
     font-size: clamp(34px, 9.4vw, 72px);
     letter-spacing: 0.035em;
@@ -557,6 +560,145 @@
 
   .aboutMeta li {
     grid-template-columns: 118px 1fr;
+  }
+}
+
+/* ════════════════════════════════════════════════
+   Mobile animated layout (<1024px, motion allowed):
+   pinned stage — copy on top, rig beneath; at the About state the
+   core rig sits left, the card column right, About copy below.
+   ════════════════════════════════════════════════ */
+@media (max-width: 1023.98px) and (prefers-reduced-motion: no-preference) {
+  .heroContent {
+    left: var(--gutter);
+    right: var(--gutter);
+    top: calc(var(--header-h) + 2px);
+    transform: none;
+    width: auto;
+    padding-top: 0;
+    z-index: 4;
+  }
+
+  .badge {
+    padding: 8px 14px;
+    font-size: 10px;
+    letter-spacing: 0.24em;
+  }
+
+  .name {
+    margin-top: 14px;
+  }
+
+  .role {
+    margin-top: 10px;
+    font-size: 14px;
+    letter-spacing: 0.3em;
+  }
+
+  .meta {
+    margin-top: 8px;
+    font-size: 10.5px;
+    letter-spacing: 0.26em;
+  }
+
+  .lede {
+    margin-top: 12px;
+    font-size: 13.5px;
+    line-height: 1.6;
+    max-width: 42ch;
+  }
+
+  .ctaRow {
+    margin-top: 16px;
+    gap: 16px;
+  }
+
+  .ctaPrimary {
+    padding: 12px 20px;
+    font-size: 11.5px;
+  }
+
+  .ctaGhost {
+    font-size: 11.5px;
+  }
+
+  .canvasWrap {
+    position: absolute;
+    inset: 0;
+  }
+
+  /* readability veils re-aimed for a vertical layout */
+  .veilLeft {
+    background: linear-gradient(
+      180deg,
+      rgba(6, 4, 3, 0.92) 0%,
+      rgba(6, 4, 3, 0.6) 30%,
+      rgba(6, 4, 3, 0.12) 52%,
+      transparent 68%
+    );
+  }
+
+  .veilRight {
+    background: linear-gradient(
+      0deg,
+      rgba(5, 3, 2, 0.94) 0%,
+      rgba(5, 3, 2, 0.66) 34%,
+      rgba(5, 3, 2, 0.15) 58%,
+      transparent 74%
+    );
+  }
+
+  .amberFollow {
+    display: none;
+  }
+
+  /* About copy — lower half of the pinned stage */
+  .aboutContent {
+    left: var(--gutter);
+    right: var(--gutter);
+    top: 54svh;
+    transform: none;
+    max-width: none;
+  }
+
+  .eyebrow {
+    font-size: 10.5px;
+    letter-spacing: 0.32em;
+  }
+
+  .aboutTitle {
+    margin-top: 10px;
+    font-size: clamp(22px, 6.6vw, 30px);
+  }
+
+  .aboutLede {
+    margin-top: 10px;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  .aboutMeta {
+    margin-top: 10px;
+  }
+
+  .aboutMeta li {
+    padding: 6px 2px;
+    grid-template-columns: 96px 1fr;
+    gap: 10px;
+  }
+
+  .metaLabel {
+    font-size: 9.5px;
+    letter-spacing: 0.26em;
+  }
+
+  .metaValue,
+  .metaValueGold {
+    font-size: 12.5px;
+  }
+
+  .cue {
+    bottom: 14px;
   }
 }
 

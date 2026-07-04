@@ -113,34 +113,65 @@ export default function CinematicScene() {
         }
       );
 
-      /* ── Compact: no pin, graceful reveals ── */
+      /* ── Mobile: same pinned 3D journey, portrait-format choreography.
+         Copy retires upward, the rig travels to its split composition
+         (core left / cards right) and the About copy rises from below. ── */
       mm.add(
         "(max-width: 1023px) and (prefers-reduced-motion: no-preference)",
         () => {
-          gsap.from("[data-rig]", {
-            autoAlpha: 0,
-            y: 46,
-            duration: 1,
-            ease: "power2.out",
+          gsap.set("[data-about-item]", { autoAlpha: 0, y: 44 });
+          gsap.set("[data-veil-right]", { opacity: 0 });
+
+          const tl = gsap.timeline({
+            defaults: { ease: "none" },
             scrollTrigger: {
-              trigger: "[data-rig]",
-              start: "top 82%",
-              toggleActions: "play none none reverse",
+              trigger: scene,
+              start: "top top",
+              end: "+=170%",
+              scrub: 1.1,
+              pin: "[data-stage]",
+              anticipatePin: 1,
+              invalidateOnRefresh: true,
+              onUpdate(self) {
+                rigScroll.progress = self.progress;
+              },
             },
           });
 
-          gsap.from("[data-about-item]", {
-            autoAlpha: 0,
-            y: 34,
-            stagger: 0.09,
-            duration: 0.7,
-            ease: "power2.out",
-            scrollTrigger: {
-              trigger: "[data-about]",
-              start: "top 78%",
-              toggleActions: "play none none reverse",
+          tl.to("[data-cue]", { autoAlpha: 0, duration: 0.05 }, 0);
+          tl.to(
+            "[data-hero-item]",
+            {
+              y: -44,
+              autoAlpha: 0,
+              stagger: 0.03,
+              duration: 0.22,
+              ease: "power1.in",
             },
-          });
+            0.02
+          );
+          tl.to(
+            "[data-video]",
+            { filter: "brightness(0.55) saturate(0.9)", duration: 0.5 },
+            0.1
+          );
+          tl.to("[data-veil-right]", { opacity: 1, duration: 0.3 }, 0.45);
+          tl.to(
+            "[data-about-item]",
+            {
+              autoAlpha: 1,
+              y: 0,
+              stagger: 0.06,
+              duration: 0.3,
+              ease: "power2.out",
+            },
+            0.6
+          );
+          tl.to({}, { duration: 0.1 });
+
+          return () => {
+            rigScroll.progress = 0;
+          };
         }
       );
     }, scene);

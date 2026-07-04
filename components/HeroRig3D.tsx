@@ -72,6 +72,27 @@ const BADGE: Triple = {
   about: { pos: [0.3, -1.12, 1.7], rot: [0, -0.04, 0], scale: 0.95 },
 };
 
+/* ── Mobile (<1024px) pose tables: portrait-format framing.
+   Hero: rig centered under the copy, large. About: core rig left,
+   card column right, upper half — the About copy (DOM) sits below. ── */
+const M_CAM = {
+  hero: { pos: [0, -0.4, 7.9], look: [0, -0.32, 0] },
+  mid: { pos: [0, -0.1, 8.7], look: [0, 0, 0] },
+  about: { pos: [0, 0.2, 9.4], look: [0, 0.24, 0] },
+};
+
+const M_CORE: Triple = {
+  hero: { pos: [0, -1.32, 0], rot: [0, -0.06, 0], scale: 0.78 },
+  mid: { pos: [0, -0.4, -0.3], rot: [0.02, 0.1, -0.01], scale: 0.66 },
+  about: { pos: [-0.6, 1.15, -0.35], rot: [0, 0.09, 0], scale: 0.45 },
+};
+
+const M_CARDSG: Triple = {
+  hero: { pos: [0, -1.32, 0], rot: [0, -0.06, 0], scale: 0.66 },
+  mid: { pos: [0, -0.35, -0.25], rot: [0.01, 0.08, 0], scale: 0.56 },
+  about: { pos: [0.58, 1.15, -0.25], rot: [0, 0.03, 0], scale: 0.55 },
+};
+
 /* pointer parallax amplitude per layer (world units, sign = direction) */
 const PARALLAX = {
   portrait: 0.015,
@@ -427,9 +448,14 @@ function RigScene({
     const t = performance.now() / 1000;
 
     /* damp progress toward the ScrollTrigger target */
-    const target = compact ? 0 : rigScroll.progress;
-    s.p = THREE.MathUtils.damp(s.p, target, 4.2, delta);
+    const target = rigScroll.progress;
+    s.p = THREE.MathUtils.damp(s.p, target, 5.5, delta);
     const p = clamp01(s.p);
+
+    /* pose tables: portrait-format framing on compact screens */
+    const TCAM = compact ? M_CAM : CAM;
+    const TCORE = compact ? M_CORE : CORE;
+    const TCARDS = compact ? M_CARDSG : CARDSG;
 
     /* pointer influence eases out while the scroll is moving fast */
     const activity = clamp01(Math.abs(target - s.p) * 16);
@@ -444,16 +470,16 @@ function RigScene({
     const idleAmp = reduced ? 0 : 1 - activity * 0.85;
 
     /* ── camera ── */
-    const camOff = compact ? -1.82 : 0; // centers the scene in stacked layout
     camera.position.set(
-      tri(CAM.hero.pos[0], CAM.mid.pos[0], CAM.about.pos[0], p) + px * 0.06,
-      tri(CAM.hero.pos[1], CAM.mid.pos[1], CAM.about.pos[1], p) - py * 0.04,
-      tri(CAM.hero.pos[2], CAM.mid.pos[2], CAM.about.pos[2], p) +
-        (compact ? 1.4 : 0)
+      tri(TCAM.hero.pos[0], TCAM.mid.pos[0], TCAM.about.pos[0], p) + px * 0.06,
+      tri(TCAM.hero.pos[1], TCAM.mid.pos[1], TCAM.about.pos[1], p) - py * 0.04,
+      tri(TCAM.hero.pos[2], TCAM.mid.pos[2], TCAM.about.pos[2], p)
     );
     s.look.set(
-      tri(CAM.hero.look[0], CAM.mid.look[0], CAM.about.look[0], p) + px * 0.1,
-      tri(CAM.hero.look[1], CAM.mid.look[1], CAM.about.look[1], p) - py * 0.07,
+      tri(TCAM.hero.look[0], TCAM.mid.look[0], TCAM.about.look[0], p) +
+        px * 0.1,
+      tri(TCAM.hero.look[1], TCAM.mid.look[1], TCAM.about.look[1], p) -
+        py * 0.07,
       0
     );
     camera.lookAt(s.look);
@@ -463,11 +489,11 @@ function RigScene({
        frame; the boost eases away by the midpoint of the journey. */
     const boost = wide ? 1 + 0.13 * (1 - smooth(clamp01(p / 0.5))) : 1;
     if (core.current) {
-      applyPose(core.current, CORE, p, camOff, compact ? 0.1 : 0, 0);
+      applyPose(core.current, TCORE, p);
       core.current.scale.multiplyScalar(boost);
     }
     if (cardsGrp.current) {
-      applyPose(cardsGrp.current, CARDSG, p, camOff, compact ? 0.1 : 0, 0);
+      applyPose(cardsGrp.current, TCARDS, p);
       cardsGrp.current.scale.multiplyScalar(boost);
     }
 
