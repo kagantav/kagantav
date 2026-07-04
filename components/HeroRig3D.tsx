@@ -152,6 +152,54 @@ function getFadeTexture() {
   return _fadeTex;
 }
 
+/* Alpha ramp for the deck reflection: the mirrored mesh flips V, so the
+   canvas BOTTOM (v=0) is the seam — opaque there, gone ~14% later. */
+let _reflFadeTex: THREE.CanvasTexture | null = null;
+function getReflectionFadeTexture() {
+  if (_reflFadeTex) return _reflFadeTex;
+  const c = document.createElement("canvas");
+  c.width = 4;
+  c.height = 512;
+  const g = c.getContext("2d")!;
+  g.fillStyle = "#000000";
+  g.fillRect(0, 0, 4, 512);
+  const grad = g.createLinearGradient(0, 512, 0, 512 * 0.86);
+  grad.addColorStop(0, "rgba(255,255,255,1)");
+  grad.addColorStop(1, "rgba(0,0,0,1)");
+  g.fillStyle = grad;
+  g.fillRect(0, Math.floor(512 * 0.84), 4, 512);
+  _reflFadeTex = new THREE.CanvasTexture(c);
+  return _reflFadeTex;
+}
+
+/* Faint mirrored copy of the portrait on the smoked-glass deck. */
+function PortraitReflection() {
+  const tex = useTexture("/assets/portrait.png");
+  const fade = useMemo(() => getReflectionFadeTexture(), []);
+  const aspect =
+    (tex.image as HTMLImageElement).width /
+    (tex.image as HTMLImageElement).height;
+  const H = 3.1;
+  return (
+    <mesh
+      position={[0.02, -H - 0.015, -0.02]}
+      scale={[1, -1, 1]}
+      renderOrder={2.2}
+    >
+      <planeGeometry args={[H * aspect, H]} />
+      <meshBasicMaterial
+        map={tex}
+        alphaMap={fade}
+        transparent
+        depthWrite={false}
+        opacity={0.16}
+        color="#cdbba0"
+        toneMapped={false}
+      />
+    </mesh>
+  );
+}
+
 function AssetPlane({
   url,
   height,
@@ -235,17 +283,29 @@ function PlatformPNG({
     return t;
   }, [tex]);
 
-  const glowTex = useMemo(() => {
-    const c = document.createElement("canvas");
-    c.width = c.height = 256;
-    const g = c.getContext("2d")!;
-    const grad = g.createRadialGradient(128, 128, 6, 128, 128, 128);
-    grad.addColorStop(0, "rgba(222,165,66,0.8)");
-    grad.addColorStop(0.45, "rgba(190,130,45,0.28)");
-    grad.addColorStop(1, "rgba(190,130,45,0)");
-    g.fillStyle = grad;
-    g.fillRect(0, 0, 256, 256);
-    return new THREE.CanvasTexture(c);
+  const { glowTex, darkTex } = useMemo(() => {
+    const make = (stops: [number, string][]) => {
+      const c = document.createElement("canvas");
+      c.width = c.height = 256;
+      const g = c.getContext("2d")!;
+      const grad = g.createRadialGradient(128, 128, 6, 128, 128, 128);
+      for (const [o, col] of stops) grad.addColorStop(o, col);
+      g.fillStyle = grad;
+      g.fillRect(0, 0, 256, 256);
+      return new THREE.CanvasTexture(c);
+    };
+    return {
+      glowTex: make([
+        [0, "rgba(222,165,66,0.8)"],
+        [0.45, "rgba(190,130,45,0.28)"],
+        [1, "rgba(190,130,45,0)"],
+      ]),
+      darkTex: make([
+        [0, "rgba(0,0,0,0.9)"],
+        [0.55, "rgba(0,0,0,0.42)"],
+        [1, "rgba(0,0,0,0)"],
+      ]),
+    };
   }, []);
 
   return (
@@ -272,6 +332,31 @@ function PlatformPNG({
           transparent
           alphaTest={0.02}
           depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
+
+      {/* occlusion pool where the body meets the bowl — grounds him */}
+      <mesh position={[0, 0.09, 0.04]} renderOrder={3.5}>
+        <planeGeometry args={[1.75, 0.6]} />
+        <meshBasicMaterial
+          map={darkTex}
+          transparent
+          depthWrite={false}
+          opacity={0.5}
+          toneMapped={false}
+        />
+      </mesh>
+
+      {/* warm catch-light at the seam, in front of the portrait */}
+      <mesh position={[0, -0.02, 0.05]} renderOrder={4.6}>
+        <planeGeometry args={[2.35, 0.72]} />
+        <meshBasicMaterial
+          map={glowTex}
+          transparent
+          depthWrite={false}
+          opacity={0.34}
+          blending={THREE.AdditiveBlending}
           toneMapped={false}
         />
       </mesh>
@@ -475,9 +560,10 @@ function RigScene({
           />
         </group>
 
-        {/* portrait cluster: cast shadow → warm rim → the person
-            (all three fade out at the bottom so he melts into the disc) */}
+        {/* portrait cluster: deck reflection → cast shadow → warm rim →
+            the person (all fading at the bottom so he melts into the disc) */}
         <group ref={portrait}>
+          <PortraitReflection />
           <group position={[-0.2, -0.11, -0.07]}>
             <AssetPlane
               url="/assets/portrait.png"
