@@ -84,10 +84,10 @@ const M_CAM = {
 const M_CORE: Triple = {
   hero: { pos: [0, -1.32, 0], rot: [0, -0.06, 0], scale: 0.78 },
   mid: { pos: [0, -0.4, -0.3], rot: [0.02, 0.1, -0.01], scale: 0.66 },
-  /* final: he stands alone, big and centered — portrait + glass +
-     platform + badge fill the frame; the cards hand off to the DOM
-     column that scrolls in right below the pinned stage */
-  about: { pos: [0, -0.12, 0], rot: [0, 0.05, 0], scale: 0.66 },
+  /* final: he stands alone and big, seated toward the bottom of the frame
+     so the platform sits just above the fold — the DOM card column then
+     continues directly beneath it, reading as one composition */
+  about: { pos: [0, -0.55, 0], rot: [0, 0.05, 0], scale: 0.68 },
 };
 
 const M_CARDSG: Triple = {
