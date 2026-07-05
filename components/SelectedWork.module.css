@@ -1,0 +1,541 @@
+/* ════════════════════════════════════════════════
+   Selected Work — pinned cinematic device showcase
+   ════════════════════════════════════════════════ */
+.section {
+  position: relative;
+  background: var(--bg);
+}
+
+/* ── Bridge from About ─────────────────────────── */
+.bridge {
+  position: relative;
+  padding: 88px var(--gutter) 40px;
+  text-align: center;
+}
+
+.bridgeLine {
+  display: block;
+  width: 1px;
+  height: 72px;
+  margin: 0 auto 30px;
+  background: linear-gradient(180deg, transparent, var(--gold));
+  box-shadow: 0 0 14px rgba(216, 169, 79, 0.55);
+}
+
+.bridgeEyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 18px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  background: var(--gold-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.bridgeEyebrow span {
+  width: 44px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold));
+  box-shadow: 0 0 10px rgba(216, 169, 79, 0.5);
+}
+
+.bridgeEyebrow span:last-child {
+  background: linear-gradient(270deg, transparent, var(--gold));
+}
+
+.bridgeTitle {
+  margin-top: 20px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(26px, 2.6vw, 44px);
+  letter-spacing: 0.005em;
+  background: var(--metal-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ── Pinned stage ──────────────────────────────── */
+.stage {
+  position: relative;
+  height: 100svh;
+  min-height: 640px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+  align-items: center;
+  gap: clamp(24px, 3.5vw, 64px);
+  padding: 0 var(--gutter);
+  overflow: clip;
+}
+
+/* accent pool behind the devices — animated via --accent */
+.glow {
+  --accent: #d8a94f;
+  position: absolute;
+  left: -6vw;
+  top: 8vh;
+  width: 68vw;
+  height: 84vh;
+  background:
+    radial-gradient(
+      52% 46% at 44% 58%,
+      color-mix(in srgb, var(--accent) 22%, transparent) 0%,
+      color-mix(in srgb, var(--accent) 8%, transparent) 46%,
+      transparent 72%
+    );
+  filter: blur(6px);
+  pointer-events: none;
+}
+
+/* ── Devices ───────────────────────────────────── */
+.devices3d {
+  perspective: 1500px;
+  min-width: 0;
+}
+
+.devices {
+  position: relative;
+  transform-style: preserve-3d;
+  transform: rotateY(-5deg) rotateX(1.6deg);
+  will-change: transform;
+}
+
+.macWrap {
+  position: relative;
+  width: min(100%, 900px);
+  aspect-ratio: 1384 / 993;
+  will-change: transform;
+  filter: drop-shadow(0 34px 60px rgba(0, 0, 0, 0.65));
+}
+
+/* screen opening measured from macbook.png alpha: 13.3% / 3.73%, 74% × 66.55% */
+.macScreen {
+  position: absolute;
+  left: 13.3%;
+  top: 3.73%;
+  width: 74%;
+  height: 66.55%;
+  overflow: hidden;
+  border-radius: 1.2% / 1.8%;
+  background: #050302;
+}
+
+.phoneWrap {
+  position: absolute;
+  right: 5%;
+  bottom: -7%;
+  width: 23.5%;
+  aspect-ratio: 658 / 1333;
+  z-index: 3;
+  transform: translateZ(90px) rotateY(-3deg);
+  will-change: transform;
+  filter: drop-shadow(0 26px 44px rgba(0, 0, 0, 0.7));
+}
+
+/* screen opening measured from iphone.png alpha: 7.75% / 3.0%, 84.65% × 94.1% */
+.phoneScreen {
+  position: absolute;
+  left: 7.75%;
+  top: 3%;
+  width: 84.65%;
+  height: 94.1%;
+  overflow: hidden;
+  border-radius: 12% / 5.4%;
+  background: #050302;
+}
+
+.frameImg {
+  object-fit: contain;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* stacked per-project screen layers */
+.shot {
+  position: absolute;
+  inset: 0;
+  will-change: transform, opacity;
+}
+
+.mediaFill {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border: 0;
+  background: #0a0705;
+}
+
+.iframeResting {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(60% 50% at 50% 40%, rgba(216, 169, 79, 0.08), transparent 70%),
+    #0a0705;
+}
+
+/* ── Placeholder screens (until real previews land) ── */
+.phDesktop,
+.phMobile {
+  --accent: #d8a94f;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(
+      120% 90% at 50% -20%,
+      color-mix(in srgb, var(--accent) 16%, transparent) 0%,
+      transparent 55%
+    ),
+    linear-gradient(180deg, #0d0906 0%, #070403 100%);
+}
+
+.phChrome {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3.2% 4%;
+  border-bottom: 1px solid rgba(216, 169, 79, 0.12);
+}
+
+.phChrome i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(216, 169, 79, 0.28);
+}
+
+.phChrome span {
+  margin-left: 10px;
+  padding: 3px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(216, 169, 79, 0.14);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--ink-faint);
+}
+
+.phBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2%;
+  text-align: center;
+  padding: 4%;
+}
+
+.phIndex {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(30px, 4.4cqw, 84px);
+  font-size: 17cqh;
+  line-height: 1;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent) 85%, #fff 10%) 0%,
+    color-mix(in srgb, var(--accent) 40%, transparent) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  opacity: 0.9;
+}
+
+.phName {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 8.5cqh;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+
+.phCat {
+  font-size: 4.2cqh;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.phRule {
+  height: 1px;
+  margin: 0 8% 7%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--accent) 45%, transparent),
+    transparent
+  );
+}
+
+.phDesktop { container-type: size; }
+.phMobile { container-type: size; }
+
+.phMobile .phBody {
+  gap: 3%;
+}
+
+.phMobile .phIndex {
+  font-size: 10cqh;
+}
+
+.phMobile .phName {
+  font-size: 4.6cqh;
+}
+
+.phMobile .phCat {
+  font-size: 2.6cqh;
+  letter-spacing: 0.22em;
+}
+
+/* ── Right panel ───────────────────────────────── */
+.panel {
+  position: relative;
+  z-index: 4;
+  min-width: 0;
+}
+
+.counterRow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 18px;
+  overflow: hidden;
+}
+
+.counterActive {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(40px, 3.4vw, 58px);
+  line-height: 1;
+  background: var(--gold-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.counterTotal {
+  font-size: 15px;
+  letter-spacing: 0.2em;
+  color: var(--ink-faint);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(26px, 2.4vw, 40px);
+  letter-spacing: 0.005em;
+  background: var(--metal-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.category {
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.desc {
+  margin-top: 16px;
+  max-width: 44ch;
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--ink-dim);
+}
+
+.stack {
+  margin-top: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+}
+
+.stack li {
+  padding: 7px 14px;
+  border: 1px solid rgba(216, 169, 79, 0.22);
+  border-radius: 999px;
+  font-size: 11.5px;
+  letter-spacing: 0.08em;
+  color: var(--ink-dim);
+  background: rgba(10, 7, 4, 0.5);
+}
+
+.actions {
+  margin-top: 26px;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+
+.btnLive {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  padding: 14px 26px;
+  border-radius: 10px;
+  border: 1px solid rgba(216, 169, 79, 0.5);
+  background:
+    linear-gradient(120deg, rgba(216, 169, 79, 0.14), rgba(216, 169, 79, 0.02) 60%),
+    rgba(10, 7, 4, 0.5);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-bright);
+  transition: border-color 0.35s ease, box-shadow 0.35s ease;
+}
+
+.btnLive svg {
+  width: 11px;
+  height: 11px;
+}
+
+.btnLive:hover {
+  border-color: rgba(243, 215, 145, 0.85);
+  box-shadow: 0 0 26px rgba(216, 169, 79, 0.3);
+}
+
+.btnDisabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.btnGhost {
+  padding: 6px 2px;
+  border-bottom: 1px solid rgba(216, 169, 79, 0.35);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  transition: color 0.3s ease, border-color 0.3s ease;
+}
+
+.btnGhost:hover {
+  color: var(--gold-bright);
+  border-color: rgba(243, 215, 145, 0.85);
+}
+
+.progress {
+  margin-top: 34px;
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(216, 169, 79, 0.14);
+  overflow: hidden;
+}
+
+.progressFill {
+  display: block;
+  height: 100%;
+  transform: scaleX(0);
+  transform-origin: left center;
+  background: linear-gradient(90deg, var(--gold-deep), var(--gold-bright));
+  box-shadow: 0 0 12px rgba(243, 215, 145, 0.7);
+}
+
+/* ════════════════════════════════════════════════
+   Responsive
+   ════════════════════════════════════════════════ */
+@media (max-width: 1023.98px) {
+  .bridge {
+    padding: 64px var(--gutter) 26px;
+  }
+
+  .stage {
+    grid-template-columns: 1fr;
+    align-content: center;
+    gap: 10px;
+    padding-top: 12px;
+  }
+
+  .glow {
+    left: -20vw;
+    width: 140vw;
+    top: 2vh;
+    height: 60vh;
+  }
+
+  .devices {
+    transform: rotateY(-3deg) rotateX(1deg);
+  }
+
+  .macWrap {
+    width: min(94vw, 560px);
+    margin: 0 auto;
+  }
+
+  .phoneWrap {
+    right: -2%;
+    bottom: -9%;
+    width: 25%;
+  }
+
+  .panel {
+    padding-bottom: 4svh;
+  }
+
+  .counterRow {
+    margin-bottom: 8px;
+  }
+
+  .counterActive {
+    font-size: 34px;
+  }
+
+  .title {
+    font-size: clamp(22px, 6vw, 28px);
+  }
+
+  .desc {
+    margin-top: 10px;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  .stack {
+    margin-top: 12px;
+    gap: 6px;
+  }
+
+  .stack li {
+    padding: 5px 11px;
+    font-size: 10.5px;
+  }
+
+  .actions {
+    margin-top: 16px;
+  }
+
+  .btnLive {
+    padding: 11px 18px;
+    font-size: 11px;
+  }
+
+  .progress {
+    margin-top: 18px;
+  }
+}
+
+/* reduced motion: no pin — the first project shows statically */
+@media (prefers-reduced-motion: reduce) {
+  .stage {
+    height: auto;
+    min-height: 0;
+    padding-top: 40px;
+    padding-bottom: 72px;
+  }
+}
