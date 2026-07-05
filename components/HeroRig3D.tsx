@@ -84,17 +84,34 @@ const M_CAM = {
 const M_CORE: Triple = {
   hero: { pos: [0, -1.32, 0], rot: [0, -0.06, 0], scale: 0.78 },
   mid: { pos: [0, -0.4, -0.3], rot: [0.02, 0.1, -0.01], scale: 0.66 },
-  /* final: he stands alone and big, seated toward the bottom of the frame
-     so the platform sits just above the fold — the DOM card column then
-     continues directly beneath it, reading as one composition */
-  about: { pos: [0, -0.55, 0], rot: [0, 0.05, 0], scale: 0.68 },
+  /* final: he stands big in the upper frame; the three cards form a
+     side-by-side row directly under the platform */
+  about: { pos: [0, -0.15, 0], rot: [0, 0.05, 0], scale: 0.6 },
 };
 
 const M_CARDSG: Triple = {
   hero: { pos: [0, -1.32, 0], rot: [0, -0.06, 0], scale: 0.66 },
   mid: { pos: [0, -0.35, -0.25], rot: [0.01, 0.08, 0], scale: 0.56 },
-  /* cards sink below the frame during the second half of the journey */
-  about: { pos: [0, -5.2, -0.2], rot: [0, 0, 0], scale: 0.55 },
+  /* the row anchor just below the platform */
+  about: { pos: [0, -1.85, -0.1], rot: [0, 0, 0], scale: 1 },
+};
+
+/* Mobile card-local About poses: one straight row of three, left → right.
+   Hero/mid legs reuse the shared tables; only the destination differs. */
+const STACK_M: Triple = {
+  hero: STACK.hero,
+  mid: STACK.mid,
+  about: { pos: [-0.78, 0, 0], rot: [0.01, 0.05, -0.01], scale: 0.72 },
+};
+const EXPERTISE_M: Triple = {
+  hero: EXPERTISE.hero,
+  mid: EXPERTISE.mid,
+  about: { pos: [0, 0, 0.06], rot: [0, 0, 0], scale: 0.74 },
+};
+const FOCUS_M: Triple = {
+  hero: FOCUS.hero,
+  mid: FOCUS.mid,
+  about: { pos: [0.78, 0, 0.12], rot: [0.01, -0.05, 0.01], scale: 0.7 },
 };
 
 /* pointer parallax amplitude per layer (world units, sign = direction) */
@@ -556,22 +573,27 @@ function RigScene({
       m.opacity = 0.3 + bump * 0.4;
     }
 
-    /* ── cards: staggered settle — stack, then expertise, then focus ── */
+    /* ── cards: staggered settle — stack, then expertise, then focus.
+       Desktop: vertical column at ~50vw. Mobile: side-by-side row under
+       the platform. ── */
+    const TSTACK = compact ? STACK_M : STACK;
+    const TEXPERTISE = compact ? EXPERTISE_M : EXPERTISE;
+    const TFOCUS = compact ? FOCUS_M : FOCUS;
     const pStack = clamp01(p / 0.91);
     const pExp = clamp01((p - 0.045) / 0.91);
     const pFocus = clamp01((p - 0.09) / 0.91);
     if (stack.current)
-      applyPose(stack.current, STACK, pStack, px * PARALLAX.stack, idle("stack"));
+      applyPose(stack.current, TSTACK, pStack, px * PARALLAX.stack, idle("stack"));
     if (expertise.current)
       applyPose(
         expertise.current,
-        EXPERTISE,
+        TEXPERTISE,
         pExp,
         px * PARALLAX.expertise,
         idle("expertise")
       );
     if (focus.current)
-      applyPose(focus.current, FOCUS, pFocus, px * PARALLAX.focus, idle("focus"));
+      applyPose(focus.current, TFOCUS, pFocus, px * PARALLAX.focus, idle("focus"));
   });
 
   return (

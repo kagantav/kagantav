@@ -1,16 +1,11 @@
 "use client";
 
 import { useLayoutEffect, useRef } from "react";
-import Image from "next/image";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import HeroRig3D from "./HeroRig3D";
 import { rigScroll } from "./rigScrollBus";
 import styles from "./CinematicScene.module.css";
-
-import stackCard from "@/public/assets/stack-card.png";
-import expertiseCard from "@/public/assets/expertise-card.png";
-import focusCard from "@/public/assets/focus-card.png";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -332,33 +327,9 @@ export default function CinematicScene() {
         </div>
       </div>
 
-      {/* ── Mobile tail: after the pinned journey the three cards stack
-          large & readable under the rig, then the About copy flows in ── */}
+      {/* ── Mobile tail: the About copy flows in right after the pinned
+          journey (the card row lives in the 3D scene, under the platform) ── */}
       <div className={styles.mobileTail}>
-        <div className={styles.tailCards}>
-          <div className={styles.tailCard} data-tail-item>
-            <Image
-              src={stackCard}
-              alt="Stack: React, Next.js, TypeScript, Node.js, PostgreSQL, Tailwind CSS"
-              sizes="80vw"
-            />
-          </div>
-          <div className={styles.tailCard} data-tail-item>
-            <Image
-              src={expertiseCard}
-              alt="Expertise: Frontend, Backend, UI Systems"
-              sizes="80vw"
-            />
-          </div>
-          <div className={styles.tailCard} data-tail-item>
-            <Image
-              src={focusCard}
-              alt="Focus: Performance, Scalability, User Experience"
-              sizes="80vw"
-            />
-          </div>
-        </div>
-
         <div className={styles.aboutFlow}>
           <AboutBody item="data-tail-item" />
         </div>

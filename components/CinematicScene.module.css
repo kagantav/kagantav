@@ -665,14 +665,14 @@
     display: none;
   }
 
-  /* flow tail: the card column continues straight under the platform —
-     same darkness, a warm pool of light spilling down from the stage */
+  /* flow tail: the About copy right after the pinned scene, under the
+     card row — a warm pool of light spills down from the stage */
   .mobileTail {
     display: block;
     position: relative;
     z-index: 5;
     background: var(--bg);
-    padding: 8px var(--gutter) 72px;
+    padding: 10px var(--gutter) 72px;
     overflow: clip;
   }
 
@@ -683,38 +683,20 @@
     left: 50%;
     translate: -50% 0;
     width: 130vw;
-    height: 240px;
+    height: 220px;
     background: radial-gradient(
       55% 62% at 50% 0%,
-      rgba(222, 165, 66, 0.16) 0%,
-      rgba(190, 130, 45, 0.06) 48%,
+      rgba(222, 165, 66, 0.13) 0%,
+      rgba(190, 130, 45, 0.05) 48%,
       transparent 74%
     );
     pointer-events: none;
   }
 
-  .tailCards {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 18px;
-  }
-
-  .tailCard {
-    width: min(80vw, 390px);
-    filter: drop-shadow(0 22px 34px rgba(0, 0, 0, 0.55));
-  }
-
-  .tailCard img {
-    width: 100%;
-    height: auto;
-  }
-
   .aboutFlow {
-    margin-top: 40px;
-    padding-top: 28px;
-    border-top: 1px solid var(--line-soft);
+    position: relative;
+    margin-top: 12px;
+    padding-top: 24px;
   }
 
   .eyebrow {
