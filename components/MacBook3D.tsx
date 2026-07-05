@@ -294,6 +294,19 @@ function useMacRig(): MacRig {
    Opacity is frame-driven, synced to the lid opening.
    ════════════════════════════════════════════════ */
 
+/* Placeholder screens are drawn + GPU-uploaded exactly once per project
+   and reused every time a slot is recycled — creating them during a
+   boundary crossing cost a visible frame on mid GPUs. */
+const placeholderCache = new Map<string, THREE.CanvasTexture>();
+function getPlaceholderTexture(project: FeaturedProject, idx: number) {
+  let t = placeholderCache.get(project.id);
+  if (!t) {
+    t = makePlaceholderTexture(project, idx);
+    placeholderCache.set(project.id, t);
+  }
+  return t;
+}
+
 function makePlaceholderTexture(project: FeaturedProject, idx: number) {
   const W = 1280;
   const H = 834;
@@ -386,7 +399,7 @@ function ScreenPlane({
       (t as THREE.VideoTexture & { __video?: HTMLVideoElement }).__video = v;
       return t;
     }
-    return makePlaceholderTexture(project, idx);
+    return getPlaceholderTexture(project, idx);
   }, [project, idx]);
 
   useEffect(() => {
@@ -727,6 +740,19 @@ function CameraRig({ reg }: { reg: Registry }) {
   return null;
 }
 
+/* Draw + upload every placeholder screen texture during scene init so a
+   slot recycle mid-scroll never triggers a first-use canvas draw or GPU
+   upload (both cost a visible frame on mid GPUs). */
+function TextureWarmup() {
+  const { gl } = useThree();
+  useEffect(() => {
+    FEATURED_PROJECTS.forEach((p, i) => {
+      if (!p.desktopMedia.src) gl.initTexture(getPlaceholderTexture(p, i));
+    });
+  }, [gl]);
+  return null;
+}
+
 /* ════════════════════════════════════════════════
    Stage placement + canvas shell
    ════════════════════════════════════════════════ */
@@ -758,7 +784,7 @@ export default function MacBook3D({
   return (
     <Canvas
       className={styles.macCanvas}
-      dpr={[1, 1.75]}
+      dpr={[1, 1.5]}
       gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
       camera={{ fov: 34, near: 0.1, far: 60, position: [0.25, 0.05, 7.4] }}
     >
@@ -782,12 +808,13 @@ export default function MacBook3D({
             scale={13}
             blur={2.6}
             far={3.2}
-            resolution={512}
+            resolution={256}
             color="#000000"
           />
         </StageRoot>
 
         <CameraRig reg={reg} />
+        <TextureWarmup />
       </Suspense>
     </Canvas>
   );

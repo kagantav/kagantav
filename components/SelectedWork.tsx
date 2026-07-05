@@ -250,7 +250,8 @@ export default function SelectedWork() {
     swScroll.liveIdx = idx;
     swScroll.liveTarget = 1;
     lockScroll();
-    setFrameState("loading");
+    // frameState is NOT reset here — the overlay iframe pre-loaded while
+    // the project was settled, so a ready frame crossfades in instantly
     setLive("enter");
   };
 
@@ -376,6 +377,29 @@ export default function SelectedWork() {
   const aIdx = Math.min(k % 2 === 0 ? k : k + 1, N - 1);
   const bIdx = Math.min(k % 2 === 0 ? k + 1 : k, N - 1);
 
+  /* the live-overlay iframe pre-loads for whichever project is settled,
+     so the CANLI İNCELE dive never pays a mount/network hitch. It keeps
+     the LAST settled project through transitions (settled = -1) so the
+     iframe is never unmounted/remounted mid-scroll. */
+  const [overlayProj, setOverlayProj] = useState(0);
+  useEffect(() => {
+    if (settled >= 0) setOverlayProj(settled);
+  }, [settled]);
+  const overlayIdx = swScroll.liveIdx >= 0 ? swScroll.liveIdx : overlayProj;
+  const overlaySrc = liveSrcOf(FEATURED_PROJECTS[overlayIdx]);
+
+  /* a different project (or none) settled → the iframe src changes and
+     must load again before it may crossfade in */
+  useEffect(() => {
+    setFrameState("loading");
+  }, [overlaySrc]);
+
+  /* the overlay iframe must be created AFTER hydration: if it were in the
+     server HTML, example.com would finish loading before React attaches
+     onLoad and the ready state would never flip */
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
+
   /* videos play only on the settled pair */
   useEffect(() => {
     const root = sectionRef.current;
@@ -411,7 +435,19 @@ export default function SelectedWork() {
       /* every visual (DOM phones, text, glow, counter AND the 3D scene)
          derives from ONE damped progress value — raw ScrollTrigger
          progress is only ever a target */
+      let lastP = NaN;
+      let lastLive = NaN;
       const applyVisual = (p: number) => {
+        /* parked and no live activity → nothing below would change;
+           skip every DOM write so the main thread stays idle */
+        if (
+          Math.abs(p - lastP) < 1e-5 &&
+          Math.abs(swScroll.live - lastLive) < 1e-5
+        )
+          return;
+        lastP = p;
+        lastLive = swScroll.live;
+
         if (progFill) gsap.set(progFill, { scaleX: p });
 
         const f = Math.min(p * TRANSITIONS, TRANSITIONS - 1e-5);
@@ -450,10 +486,12 @@ export default function SelectedWork() {
         const liveDim = 1 - easeIO(clamp01(swScroll.live / 0.22));
         if (panel) gsap.set(panel, { autoAlpha: liveDim });
 
-        /* ── outgoing pair: long continuous fade (45%→98% of the exit) ── */
+        /* ── outgoing pair: long continuous fade (45%→98% of the exit).
+           NOTE: no DOM blur — animating a CSS filter re-rasterizes the
+           layer every frame for an element that is already ~invisible
+           at that point, and it visibly cost frames on mid GPUs. ── */
         const to = easeIO(tr);
         const outFade = 1 - smoother(clamp01((lt - 0.5) / 0.46));
-        const outBlur = lt > 0.88 ? clamp01((lt - 0.88) / 0.1) * 2.2 : 0;
         gsap.set(outPair, {
           x: 42 * vw * to,
           z: -150 * to,
@@ -461,7 +499,6 @@ export default function SelectedWork() {
           rotationX: 2 * to,
           scale: 1 - 0.18 * to,
           autoAlpha: outFade,
-          filter: outBlur > 0.05 ? `blur(${outBlur.toFixed(2)}px)` : "none",
         });
         /* outgoing iPhone: swells toward the camera, arcs right, tilts
            away and fades slightly BEFORE its MacBook */
@@ -485,7 +522,6 @@ export default function SelectedWork() {
           rotationX: 1.5 * (1 - ti2),
           scale: 0.82 + 0.18 * ti2,
           autoAlpha: inFade,
-          filter: "none",
         });
         /* incoming iPhone: farther left, stronger tilt, shallow arc around
            the MacBook's front edge, arrives after the MacBook */
@@ -770,66 +806,63 @@ export default function SelectedWork() {
 
       {/* ── CANLI İNCELE overlay: the camera dives into the display in 3D;
           once the screen fills the viewport this fixed layer blends in and
-          hands off to a single live iframe ── */}
-      {live !== "off" && (
-        <div
-          className={styles.liveDive}
-          data-state={live}
-          role="dialog"
-          aria-label={`${FEATURED_PROJECTS[swScroll.liveIdx]?.name ?? ""} canlı inceleme`}
-        >
-          <div className={styles.liveVeil} aria-hidden="true" />
+          hands off to a single live iframe.
+          PERFORMANCE: the overlay stays PERMANENTLY mounted and the iframe
+          pre-loads as soon as its project settles — entering/leaving live
+          mode only flips data-state, so no React commit, iframe creation or
+          network load can ever hitch a frame of the camera dive. */}
+      <div
+        className={styles.liveDive}
+        data-state={live}
+        role="dialog"
+        aria-hidden={live === "off"}
+        aria-label={`${FEATURED_PROJECTS[overlayIdx]?.name ?? ""} canlı inceleme`}
+      >
+        <div className={styles.liveVeil} aria-hidden="true" />
 
-          {(live === "on" || live === "exit") && (
-            <div className={styles.liveFrame}>
-              {frameState === "loading" && (
-                <div className={styles.liveLoading}>
-                  <i />
-                  <span>Canlı önizleme yükleniyor…</span>
-                </div>
-              )}
-              {frameState === "fail" ? (
-                <div className={styles.liveFallback}>
-                  <p>
-                    Bu site gömülü önizlemeye izin vermiyor
-                    <br />
-                    (X-Frame-Options / CSP).
-                  </p>
-                  <a
-                    href={liveSrcOf(FEATURED_PROJECTS[swScroll.liveIdx]) ?? "#"}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Yeni Sekmede Aç
-                    <svg viewBox="0 0 14 14" aria-hidden="true">
-                      <path
-                        d="M2 12L12 2M12 2H4.5M12 2v7.5"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.6"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </a>
-                </div>
-              ) : (
-                <iframe
-                  src={liveSrcOf(FEATURED_PROJECTS[swScroll.liveIdx]) ?? undefined}
-                  title="Canlı önizleme"
-                  onLoad={() => setFrameState("ok")}
-                  data-ready={frameState === "ok"}
-                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-                />
-              )}
+        <div className={styles.liveFrame}>
+          {frameState === "loading" && (
+            <div className={styles.liveLoading}>
+              <i />
+              <span>Canlı önizleme yükleniyor…</span>
             </div>
           )}
-
-          <button className={styles.liveExit} onClick={exitLive}>
-            Canlı İncelemeden Çık ✕
-          </button>
+          {frameState === "fail" ? (
+            <div className={styles.liveFallback}>
+              <p>
+                Bu site gömülü önizlemeye izin vermiyor
+                <br />
+                (X-Frame-Options / CSP).
+              </p>
+              <a href={overlaySrc ?? "#"} target="_blank" rel="noreferrer">
+                Yeni Sekmede Aç
+                <svg viewBox="0 0 14 14" aria-hidden="true">
+                  <path
+                    d="M2 12L12 2M12 2H4.5M12 2v7.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </a>
+            </div>
+          ) : overlaySrc && hydrated ? (
+            <iframe
+              src={overlaySrc}
+              title="Canlı önizleme"
+              onLoad={() => setFrameState("ok")}
+              data-ready={frameState === "ok"}
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+            />
+          ) : null}
         </div>
-      )}
+
+        <button className={styles.liveExit} onClick={exitLive} tabIndex={live === "off" ? -1 : 0}>
+          Canlı İncelemeden Çık ✕
+        </button>
+      </div>
 
       {/* dev-only continuity inspector (?swdebug) */}
       {dbg && (

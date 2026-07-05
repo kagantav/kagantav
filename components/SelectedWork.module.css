@@ -582,6 +582,12 @@
   pointer-events: none;
 }
 
+/* permanently mounted; while off it is invisible and paints nothing,
+   but the pre-loading iframe inside keeps loading */
+.liveDive[data-state="off"] {
+  visibility: hidden;
+}
+
 /* dark vignette that closes in as the camera approaches the display */
 .liveVeil {
   position: absolute;

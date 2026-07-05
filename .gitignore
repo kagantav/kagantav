@@ -9,3 +9,6 @@
 .DS_Store
 *.tsbuildinfo
 npm-debug.log*
+
+# local screen recordings
+Recording *.mp4
