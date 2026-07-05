@@ -1,6 +1,12 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef } from "react";
+import {
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  type MutableRefObject,
+} from "react";
 import * as THREE from "three";
 import { Canvas, createPortal, useFrame, useThree } from "@react-three/fiber";
 import {
@@ -19,26 +25,38 @@ const MODEL_URL = "/assets/macbook-ultra-concept/source/MacBook Ultra.glb";
 const N = FEATURED_PROJECTS.length;
 const TRANSITIONS = N - 1;
 
-const TARGET_WIDTH = 3.6; // world width of the MacBook base
-/* Empirically probed (side-by-side ±90° render): the display surface
-   faces the model's -Z side, so the root is turned 180° toward the
-   camera and the lid opens on the negative-X side of the hinge:
-   0 → closed flat, -π/2 → upright, slightly beyond → premium recline. */
-/* Hinge (verified against the GLB accessors): lid-local +Z is the top
-   edge, the display faces -Y. rotation.x = 0 → closed flat;
-   negative X lifts the top edge and turns the display to the camera. */
+const TARGET_WIDTH = 3.6;
+/* Hinge (verified against GLB accessors): 0 = closed flat over the deck,
+   negative X opens the display toward the camera. */
 const LID_CLOSED = -0.1;
-const LID_OPEN = -Math.PI / 2 - 0.14; // ≈ 98° premium viewing angle
+const LID_OPEN = -Math.PI / 2 - 0.14;
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+const smooth = (t: number) => t * t * (3 - 2 * t);
+const bump = (t: number) => Math.sin(Math.PI * clamp01(t));
 const easeIO = gsap.parseEase("power2.inOut");
 const easeOut = gsap.parseEase("power3.out");
+const backOut = gsap.parseEase("back.out(1.3)");
 
 const pad = (n: number) => String(n + 1).padStart(2, "0");
 
+/* segment helper: which transition k, and local progress within it */
+function seg(p: number) {
+  const f = Math.min(p * TRANSITIONS, TRANSITIONS - 1e-5);
+  const k = Math.max(0, Math.floor(f));
+  return { k, lt: f - k };
+}
+
 /* ════════════════════════════════════════════════
-   Model preparation: clone per unit, black glossy screen,
-   lid handle + Html anchor on the LCD surface.
+   Cinematic pose keys (world units around the showcase center)
+   ════════════════════════════════════════════════ */
+const P_IN0 = { x: -5.1, y: -0.15, z: -1.8, ry: -0.55, rx: -0.05, rz: -0.025, s: 0.79 };
+const P_SHOW = { x: 0, y: 0, z: 0, ry: 0.08, rx: -0.025, rz: 0, s: 1 };
+const P_OUT1 = { x: 5.6, y: 0.1, z: -2.2, ry: 0.55, rx: 0.06, rz: 0.025, s: 0.77 };
+
+/* ════════════════════════════════════════════════
+   Model rig — per-unit clone with independently fadable materials
    ════════════════════════════════════════════════ */
 
 interface MacRig {
@@ -46,7 +64,8 @@ interface MacRig {
   lid: THREE.Object3D | null;
   anchor: THREE.Group;
   screenWorld: { w: number; h: number };
-  rootScale: number;
+  fadeMats: THREE.Material[];
+  setOpacity: (v: number) => void;
 }
 
 function useMacRig(): MacRig {
@@ -55,7 +74,7 @@ function useMacRig(): MacRig {
   return useMemo(() => {
     const root = SkeletonUtils.clone(scene);
 
-    // normalize: scale so the base spans TARGET_WIDTH, rest on y=0, centered
+    // normalize: TARGET_WIDTH wide, resting on y=0, centered
     const box = new THREE.Box3().setFromObject(root);
     const size = new THREE.Vector3();
     box.getSize(size);
@@ -69,124 +88,132 @@ function useMacRig(): MacRig {
     root.position.y -= box2.min.y;
 
     const lid = root.getObjectByName("Lid") ?? null;
-
-    // black glossy display + Html anchor sized to the LCD surface
     const anchor = new THREE.Group();
     let screenWorld = { w: 3.4, h: 2.2 };
+    const fadeMats: THREE.Material[] = [];
 
-    if (lid) {
-      const matsOf = (mesh: THREE.Mesh) =>
-        Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    const blackPanel = new THREE.MeshPhysicalMaterial({
+      color: "#020202",
+      roughness: 0.16,
+      metalness: 0.1,
+      clearcoat: 1,
+      clearcoatRoughness: 0.12,
+      polygonOffset: true,
+      polygonOffsetFactor: -2,
+    });
+    const clearGlass = new THREE.MeshPhysicalMaterial({
+      color: "#0a0a0a",
+      transparent: true,
+      opacity: 0.06,
+      roughness: 0.05,
+      metalness: 0,
+      depthWrite: false,
+    });
 
-      // glass → truly transparent; LCD → deep glossy black (kills the
-      // baked wallpaper + its emissive); track the largest LCD surface
-      let lcd: THREE.Mesh | null = null;
-      let bestArea = 0;
-      const blackPanel = new THREE.MeshPhysicalMaterial({
-        color: "#020202",
-        roughness: 0.16,
-        metalness: 0.1,
-        clearcoat: 1,
-        clearcoatRoughness: 0.12,
-        polygonOffset: true,
-        polygonOffsetFactor: -2,
-      });
-      const clearGlass = new THREE.MeshPhysicalMaterial({
-        color: "#0a0a0a",
-        transparent: true,
-        opacity: 0.06,
-        roughness: 0.05,
-        metalness: 0,
-        depthWrite: false,
-      });
+    let lcd: THREE.Mesh | null = null;
+    let bestArea = 0;
 
-      root.traverse((o) => {
-        const mesh = o as THREE.Mesh;
-        if (!mesh.isMesh) return;
-        const mats = matsOf(mesh);
-        mats.forEach((mat, mi) => {
-          const name = mat?.name ?? "";
-          /* Every panel-sized layer stacked in the display plane (gasket,
-             plastic backing, cover glass) becomes the same deep-black
-             glossy surface — the premium "off" screen. */
-          if (
-            name === "Display glass nanotexture" ||
-            name === "Plastic cover" ||
-            name === "Rubber gasket"
-          ) {
-            if (Array.isArray(mesh.material)) mesh.material[mi] = blackPanel;
-            else mesh.material = blackPanel;
+    root.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      mats.forEach((mat, mi) => {
+        const name = mat?.name ?? "";
+        if (
+          name === "Display glass nanotexture" ||
+          name === "Plastic cover" ||
+          name === "Rubber gasket"
+        ) {
+          const m = blackPanel;
+          if (Array.isArray(mesh.material)) mesh.material[mi] = m;
+          else mesh.material = m;
+          return;
+        }
+        if (name === "Display glass") {
+          if (Array.isArray(mesh.material)) mesh.material[mi] = clearGlass;
+          else mesh.material = clearGlass;
+          return;
+        }
+        if (name === "LCD") {
+          const m = blackPanel;
+          if (Array.isArray(mesh.material)) mesh.material[mi] = m;
+          else mesh.material = m;
+          mesh.geometry.computeBoundingBox();
+          const d = new THREE.Vector3();
+          mesh.geometry.boundingBox!.getSize(d);
+          const sorted = [d.x, d.y, d.z].sort((a, b) => b - a);
+          if (sorted[0] * sorted[1] > bestArea) {
+            bestArea = sorted[0] * sorted[1];
+            lcd = mesh;
           }
-          if (name === "Display glass") {
-            if (Array.isArray(mesh.material)) mesh.material[mi] = clearGlass;
-            else mesh.material = clearGlass;
-          }
-          if (name === "LCD") {
-            if (Array.isArray(mesh.material)) mesh.material[mi] = blackPanel;
-            else mesh.material = blackPanel;
-            mesh.geometry.computeBoundingBox();
-            const d = new THREE.Vector3();
-            mesh.geometry.boundingBox!.getSize(d);
-            const sorted = [d.x, d.y, d.z].sort((a, b) => b - a);
-            const area = sorted[0] * sorted[1];
-            if (area > bestArea) {
-              bestArea = area;
-              lcd = mesh;
-            }
-          }
-        });
+          return;
+        }
+        // every other material: clone per unit so cross-fading two
+        // MacBooks never bleeds between instances
+        const cloned = mat.clone();
+        if (Array.isArray(mesh.material)) mesh.material[mi] = cloned;
+        else mesh.material = cloned;
       });
-      if (!lcd) console.warn("[MacBook3D] LCD surface not found in model");
+    });
 
-      if (lcd) {
-        const m = lcd as THREE.Mesh;
-        // premium inactive display: deep black, glassy
-        m.material = new THREE.MeshPhysicalMaterial({
-          color: "#020202",
-          roughness: 0.16,
-          metalness: 0.1,
-          clearcoat: 1,
-          clearcoatRoughness: 0.12,
-        });
+    // collect every material for the whole-device fade (shared black/glass
+    // panels included — they're created per-rig above)
+    const seen = new Set<THREE.Material>();
+    root.traverse((o) => {
+      const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).forEach(
+        (m) => {
+          if (!m || seen.has(m)) return;
+          seen.add(m);
+          fadeMats.push(m);
+        }
+      );
+    });
 
-        m.geometry.computeBoundingBox();
-        const bb = m.geometry.boundingBox!;
-        const dims = new THREE.Vector3();
-        bb.getSize(dims);
-        const c = new THREE.Vector3();
-        bb.getCenter(c);
-
-        // thinnest axis = screen normal. Dimensions stay in LID-LOCAL units —
-        // the anchor inherits the root scale, so don't apply it twice.
-        const axes: ("x" | "y" | "z")[] = ["x", "y", "z"];
-        const normalAxis = axes.reduce((a, b) => (dims[a] < dims[b] ? a : b));
-        const planar = axes.filter((a) => a !== normalAxis);
-        screenWorld = {
-          w: Math.max(dims[planar[0]], dims[planar[1]]),
-          h: Math.min(dims[planar[0]], dims[planar[1]]),
-        };
-
-        anchor.position.copy(c);
-        // the display emits toward -Y in lid space (the +Y side is the shell)
-        anchor.position[normalAxis] -= dims[normalAxis] / 2 + 0.0016;
-        if (normalAxis === "y") anchor.rotation.x = Math.PI / 2;
-        if (normalAxis === "x") anchor.rotation.y = -Math.PI / 2;
-        (lcd as THREE.Mesh).parent?.add(anchor);
-      } else {
-        lid.add(anchor);
-      }
+    if (lcd) {
+      const m = lcd as THREE.Mesh;
+      m.geometry.computeBoundingBox();
+      const bb = m.geometry.boundingBox!;
+      const dims = new THREE.Vector3();
+      bb.getSize(dims);
+      const c = new THREE.Vector3();
+      bb.getCenter(c);
+      const axes: ("x" | "y" | "z")[] = ["x", "y", "z"];
+      const normalAxis = axes.reduce((a, b) => (dims[a] < dims[b] ? a : b));
+      const planar = axes.filter((a) => a !== normalAxis);
+      screenWorld = {
+        w: Math.max(dims[planar[0]], dims[planar[1]]),
+        h: Math.min(dims[planar[0]], dims[planar[1]]),
+      };
+      anchor.position.copy(c);
+      anchor.position[normalAxis] -= dims[normalAxis] / 2 + 0.0016;
+      if (normalAxis === "y") anchor.rotation.x = Math.PI / 2;
+      if (normalAxis === "x") anchor.rotation.y = -Math.PI / 2;
+      (lcd as THREE.Mesh).parent?.add(anchor);
+    } else if (lid) {
+      lid.add(anchor);
     }
 
-    return { root, lid, anchor, screenWorld, rootScale: s };
+    const setOpacity = (v: number) => {
+      const t = clamp01(v);
+      for (const m of fadeMats) {
+        if (m === clearGlass) {
+          m.opacity = 0.06 * t;
+          continue;
+        }
+        m.transparent = t < 0.999;
+        m.opacity = t;
+      }
+    };
+
+    return { root, lid, anchor, screenWorld, fadeMats, setOpacity };
   }, [scene]);
 }
 
 /* ════════════════════════════════════════════════
-   Screen content — a texture plane on the LCD surface (the alignment-
-   proven approach). Black panel at rest; the preview fades in on settle.
-   image → texture, video → VideoTexture, iframe/placeholder → a
-   canvas-drawn premium card (live embeds open via the panel's
-   "Live Preview" modal instead of an in-screen iframe).
+   Screen content — texture plane on the LCD (alignment-proven).
+   Opacity is frame-driven, synced to the lid opening.
    ════════════════════════════════════════════════ */
 
 function makePlaceholderTexture(project: FeaturedProject, idx: number) {
@@ -205,7 +232,6 @@ function makePlaceholderTexture(project: FeaturedProject, idx: number) {
   g.fillStyle = glow;
   g.fillRect(0, 0, W, H);
 
-  // browser chrome
   g.fillStyle = "rgba(216,169,79,0.10)";
   g.fillRect(0, 0, W, 64);
   for (let i = 0; i < 3; i++) {
@@ -222,7 +248,6 @@ function makePlaceholderTexture(project: FeaturedProject, idx: number) {
   g.font = "500 19px Archivo, Arial, sans-serif";
   g.fillText(`${project.id}.com`, 162, 39);
 
-  // big index
   const grad = g.createLinearGradient(0, H * 0.3, 0, H * 0.62);
   grad.addColorStop(0, project.accentColor);
   grad.addColorStop(1, `${project.accentColor}55`);
@@ -231,16 +256,13 @@ function makePlaceholderTexture(project: FeaturedProject, idx: number) {
   g.textAlign = "center";
   g.fillText(pad(idx), W / 2, H * 0.5);
 
-  // name + category
   g.fillStyle = "#ece4d4";
   g.font = "600 58px Archivo, Arial, sans-serif";
   g.fillText(project.name, W / 2, H * 0.62);
   g.fillStyle = "rgba(169,158,138,0.85)";
   g.font = "500 26px Archivo, Arial, sans-serif";
-  const cat = project.category.toUpperCase().split("").join("  ");
-  g.fillText(cat, W / 2, H * 0.685);
+  g.fillText(project.category.toUpperCase().split("").join("  "), W / 2, H * 0.685);
 
-  // bottom rule
   const rule = g.createLinearGradient(W * 0.2, 0, W * 0.8, 0);
   rule.addColorStop(0, "rgba(0,0,0,0)");
   rule.addColorStop(0.5, `${project.accentColor}66`);
@@ -259,14 +281,14 @@ function ScreenPlane({
   project,
   idx,
   settled,
+  matRef,
 }: {
   rig: MacRig;
   project: FeaturedProject;
   idx: number;
   settled: boolean;
+  matRef: MutableRefObject<THREE.MeshBasicMaterial | null>;
 }) {
-  const matRef = useRef<THREE.MeshBasicMaterial>(null);
-
   const tex = useMemo(() => {
     const m = project.desktopMedia;
     if (m.type === "image" && m.src) {
@@ -289,23 +311,12 @@ function ScreenPlane({
     return makePlaceholderTexture(project, idx);
   }, [project, idx]);
 
-  // videos only run while their project is settled
   useEffect(() => {
     const v = (tex as THREE.Texture & { __video?: HTMLVideoElement }).__video;
     if (!v) return;
     if (settled) v.play().catch(() => {});
     else v.pause();
   }, [settled, tex]);
-
-  // clean preview fade on the glossy black panel
-  useEffect(() => {
-    if (!matRef.current) return;
-    gsap.to(matRef.current, {
-      opacity: settled ? 1 : 0,
-      duration: 0.55,
-      ease: "power2.out",
-    });
-  }, [settled]);
 
   return createPortal(
     <mesh position={[0, 0, 0.0006]}>
@@ -323,116 +334,257 @@ function ScreenPlane({
 }
 
 /* ════════════════════════════════════════════════
-   One 3D MacBook — pose + hinged lid, pure function of scroll
+   Registry shared with the camera rig
+   ════════════════════════════════════════════════ */
+
+interface UnitHandle {
+  group: THREE.Group | null;
+  rig: MacRig;
+  projectIdx: number;
+}
+type Registry = MutableRefObject<Record<string, UnitHandle>>;
+
+/* ════════════════════════════════════════════════
+   One cinematic MacBook
    ════════════════════════════════════════════════ */
 
 function MacUnit({
   unit,
   projectIdx,
   settledIdx,
+  reg,
 }: {
   unit: "A" | "B";
   projectIdx: number;
   settledIdx: number;
+  reg: Registry;
 }) {
   const rig = useMacRig();
   const group = useRef<THREE.Group>(null);
-  const { viewport } = useThree();
+  const rim = useRef<THREE.PointLight>(null);
+  const screenMat = useRef<THREE.MeshBasicMaterial>(null);
   const phase = unit === "A" ? 0 : 2.4;
+
+  useEffect(() => {
+    reg.current[unit] = { group: group.current, rig, projectIdx };
+  });
 
   useFrame((state) => {
     const g = group.current;
-    if (!g || !rig.root) return;
+    if (!g) return;
 
-    const p = swScroll.progress;
-    const f = Math.min(p * TRANSITIONS, TRANSITIONS - 1e-5);
-    const k = Math.max(0, Math.floor(f));
-    const lt = f - k;
+    const { k, lt } = seg(swScroll.smooth);
     const isOut = (k % 2 === 0) === (unit === "A");
-    const tr = clamp01((lt - 0.15) / 0.7);
-    const vw = viewport.width;
     const t = state.clock.elapsedTime;
 
-    let x: number;
-    let y: number;
-    let z: number;
-    let rotY: number;
-    let rotZ: number;
-    let scl: number;
-    let openT: number;
+    let x: number, y: number, z: number;
+    let ry: number, rx: number, rz: number, s: number;
+    let opacity: number;
+    let lidT: number; // 0 closed → 1 open
+    let presence: number; // drives rim light + screen brightness
 
     if (isOut) {
-      /* centered showcase → exits stage-right, receding, lid closing */
-      const to = easeIO(tr);
-      x = vw * 0.68 * to;
-      y = 0.12 * to;
-      z = -1.6 * to;
-      rotY = -0.22 * to;
-      rotZ = -0.02 * to;
-      scl = 1 - 0.16 * to;
-      openT =
-        lt < 0.15 ? 1 : 1 - 0.9 * easeIO(clamp01((lt - 0.15) / 0.62));
+      /* showcase → rotate away, curve right & back, close, fade late */
+      const tr = clamp01((lt - 0.15) / 0.67); // physical exit 15%→82%
+      const e = easeIO(tr);
+      x = lerp(P_SHOW.x, P_OUT1.x, e);
+      y = lerp(P_SHOW.y, P_OUT1.y, e) + 0.18 * bump(e);
+      z = lerp(P_SHOW.z, P_OUT1.z, e) - 0.2 * bump(e);
+      ry = lerp(P_SHOW.ry, P_OUT1.ry, easeIO(clamp01(tr * 1.15))); // rotates first
+      rx = lerp(P_SHOW.rx, P_OUT1.rx, e);
+      rz = lerp(P_SHOW.rz, P_OUT1.rz, e);
+      s = lerp(P_SHOW.s, P_OUT1.s, e);
+      const fade = smooth(clamp01((lt - 0.58) / 0.3)); // fades 58%→88%
+      opacity = 1 - fade;
+      lidT = lt < 0.15 ? 1 : 1 - 0.9 * smooth(clamp01((lt - 0.18) / 0.55));
+      presence = 1 - smooth(clamp01((lt - 0.35) / 0.4));
     } else {
-      /* parked off-stage left, lid ajar → sweeps in, opens, settles */
-      const ti = easeOut(tr);
-      x = -vw * 0.72 * (1 - ti);
-      y = 0.3 * (1 - ti);
-      z = -1.1 * (1 - ti);
-      rotY = 0.3 * (1 - ti);
-      rotZ = 0.015 * (1 - ti);
-      scl = 0.84 + 0.16 * ti;
-      openT = 0.2 + 0.8 * easeOut(clamp01((lt - 0.42) / 0.5));
+      /* far left & back, lid ajar → curved arrival, overshoot, settle */
+      const tr = clamp01((lt - 0.15) / 0.67);
+      const e = easeOut(tr);
+      const eb = backOut(tr); // gentle rotational overshoot
+      x = lerp(P_IN0.x, P_SHOW.x, e);
+      y = lerp(P_IN0.y, P_SHOW.y, e) + 0.22 * bump(e);
+      z = lerp(P_IN0.z, P_SHOW.z, e) - 0.15 * bump(e * 0.8);
+      ry = lerp(P_IN0.ry, P_SHOW.ry, eb);
+      rx = lerp(P_IN0.rx, P_SHOW.rx, e);
+      rz = lerp(P_IN0.rz, P_SHOW.rz, e);
+      s = lerp(P_IN0.s, P_SHOW.s, e);
+      opacity = smooth(clamp01(tr / 0.32));
+      lidT = 0.12 + 0.88 * easeOut(clamp01((lt - 0.3) / 0.52));
+      presence = smooth(clamp01((lt - 0.35) / 0.45));
+      // final settle breath 82%→100%
+      const st = smooth(clamp01((lt - 0.82) / 0.18));
+      s *= 1 - 0.006 * bump(st);
     }
 
-    // gentle idle breath, calmer while traveling
-    const travel = isOut ? easeIO(tr) : 1 - easeOut(tr);
-    const idle = (1 - 0.7 * travel) * Math.sin(t * 0.55 + phase) * 0.045;
+    /* idle breath — only while present and calm */
+    const calm = isOut ? 1 - clamp01((lt - 0.15) / 0.2) : clamp01((lt - 0.8) / 0.2);
+    const idle = calm * Math.sin(t * 0.55 + phase) * 0.04;
+
+    /* live-mode: the active unit straightens toward the camera, the
+       other one melts away (CameraRig owns the camera itself) */
+    const L = easeIO(clamp01(swScroll.live));
+    if (L > 0.001) {
+      const isLive = swScroll.liveIdx === projectIdx;
+      if (isLive) {
+        x = lerp(x, 0, L);
+        y = lerp(y, 0, L);
+        z = lerp(z, 0.35, L);
+        ry = lerp(ry, 0, L);
+        rx = lerp(rx, -0.005, L);
+        rz = lerp(rz, 0, L);
+        s = lerp(s, 1, L);
+        lidT = lerp(lidT, 1, L);
+        opacity = Math.max(opacity, L);
+      } else {
+        opacity *= 1 - L;
+      }
+    }
 
     g.position.set(x, y + idle, z);
-    g.rotation.set(0, rotY, rotZ);
-    g.scale.setScalar(scl);
+    g.rotation.set(rx, ry, rz);
+    g.scale.setScalar(s);
+    rig.setOpacity(opacity);
 
-    if (rig.lid) {
-      rig.lid.rotation.x = LID_CLOSED + (LID_OPEN - LID_CLOSED) * clamp01(openT);
+    if (rig.lid)
+      rig.lid.rotation.x = LID_CLOSED + (LID_OPEN - LID_CLOSED) * clamp01(lidT);
+
+    /* screen: black until the lid is mostly open, then the preview glows
+       in; dims again as the lid closes on exit */
+    if (screenMat.current) {
+      const on = smooth(clamp01((lidT - 0.72) / 0.26));
+      screenMat.current.opacity = on * opacity;
     }
+
+    /* warm rim light follows presence */
+    if (rim.current) rim.current.intensity = 3.2 * presence * opacity + 0.15;
   });
 
   const project = FEATURED_PROJECTS[projectIdx];
-  const settled = settledIdx === projectIdx;
 
   return (
     <group ref={group}>
       <primitive object={rig.root} />
+      {/* gold rim light hugging the rear edge of this unit */}
+      <pointLight
+        ref={rim}
+        position={[-1.6, 2.2, -1.8]}
+        color="#e9b45e"
+        intensity={0.15}
+        distance={9}
+        decay={2}
+      />
       <ScreenPlane
         rig={rig}
         project={project}
         idx={projectIdx}
-        settled={settled}
+        settled={settledIdx === projectIdx}
+        matRef={screenMat}
       />
     </group>
   );
 }
 
-/* Positions the showcase: under the left column on desktop stages,
-   centered in the upper area on portrait/mobile stages. */
+/* ════════════════════════════════════════════════
+   Camera rig — smoothing, transition choreography, live dive
+   ════════════════════════════════════════════════ */
+
+function CameraRig({ reg }: { reg: Registry }) {
+  const { camera, viewport } = useThree();
+  const tmp = useRef({
+    look: new THREE.Vector3(),
+    aPos: new THREE.Vector3(),
+    aDir: new THREE.Vector3(),
+    q: new THREE.Quaternion(),
+  });
+
+  useFrame((_, rawDt) => {
+    const dt = Math.min(rawDt, 0.05);
+    swScroll.smooth = THREE.MathUtils.damp(
+      swScroll.smooth,
+      swScroll.progress,
+      6,
+      dt
+    );
+    swScroll.live = THREE.MathUtils.damp(
+      swScroll.live,
+      swScroll.liveTarget,
+      swScroll.liveTarget === 1 ? 3.2 : 4.6, // exit pulls back a bit faster
+      dt
+    );
+
+    const portrait = viewport.aspect < 1.05;
+    const { lt } = seg(swScroll.smooth);
+    const phase = clamp01((lt - 0.15) / 0.85);
+    const b = bump(phase);
+    const amp = portrait ? 0.45 : 1;
+
+    /* base + transition choreography: drift toward the incoming side,
+       dolly in around the midpoint, look-at sweeps out → in → center */
+    let px = (portrait ? 0 : 0.25) - 0.27 * amp * Math.sin(Math.PI * Math.min(phase * 1.12, 1));
+    let py = (portrait ? -0.4 : 0.05) + 0.08 * amp * b;
+    let pz = (portrait ? 7.9 : 7.4) - 0.32 * amp * b;
+    const lookBase = portrait ? -0.32 : 0.08;
+    let lx =
+      phase < 0.5
+        ? lerp(0.35 * amp, -0.5 * amp, smooth(phase / 0.5))
+        : lerp(-0.5 * amp, 0, smooth((phase - 0.5) / 0.5));
+    let ly = lookBase - 0.05 * amp * b;
+    let lz = 0;
+    let fov = 34 - 2.6 * b;
+
+    /* live dive: travel into the active display */
+    const L = easeIO(clamp01(swScroll.live));
+    if (L > 0.001) {
+      const handles = Object.values(reg.current);
+      const active = handles.find((h) => h.projectIdx === swScroll.liveIdx);
+      if (active?.rig.anchor) {
+        const v = tmp.current;
+        active.rig.anchor.getWorldPosition(v.aPos);
+        active.rig.anchor.getWorldQuaternion(v.q);
+        v.aDir.set(0, 0, 1).applyQuaternion(v.q).normalize();
+        const dist = portrait ? 2.1 : 1.55;
+        px = lerp(px, v.aPos.x + v.aDir.x * dist, L);
+        py = lerp(py, v.aPos.y + v.aDir.y * dist, L);
+        pz = lerp(pz, v.aPos.z + v.aDir.z * dist, L);
+        lx = lerp(lx, v.aPos.x, L);
+        ly = lerp(ly, v.aPos.y, L);
+        lz = lerp(lz, v.aPos.z, L);
+        fov = lerp(fov, 30, L);
+      }
+    }
+
+    camera.position.set(px, py, pz);
+    tmp.current.look.set(lx, ly, lz);
+    camera.lookAt(tmp.current.look);
+    if ((camera as THREE.PerspectiveCamera).fov !== fov) {
+      (camera as THREE.PerspectiveCamera).fov = fov;
+      (camera as THREE.PerspectiveCamera).updateProjectionMatrix();
+    }
+    // NOTE: no positive useFrame priority here — that would switch R3F
+    // into manual-render mode and blank the whole canvas.
+  });
+
+  return null;
+}
+
+/* ════════════════════════════════════════════════
+   Stage placement + canvas shell
+   ════════════════════════════════════════════════ */
+
 function StageRoot({ children }: { children: React.ReactNode }) {
   const { viewport } = useThree();
   const portrait = viewport.aspect < 1.05;
   return (
     <group
-      position={
-        portrait ? [0, 0.78, 0] : [-viewport.width * 0.16, -0.95, 0]
-      }
+      position={portrait ? [0, 0.78, 0] : [-viewport.width * 0.16, -0.95, 0]}
       scale={portrait ? 0.5 : 1}
     >
       {children}
     </group>
   );
 }
-
-/* ════════════════════════════════════════════════
-   Canvas shell — lights, warm env reflections, contact shadow
-   ════════════════════════════════════════════════ */
 
 export default function MacBook3D({
   aIdx,
@@ -443,45 +595,29 @@ export default function MacBook3D({
   bIdx: number;
   settledIdx: number;
 }) {
+  const reg = useRef<Record<string, UnitHandle>>({});
+
   return (
     <Canvas
       className={styles.macCanvas}
       dpr={[1, 1.75]}
       gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
-      camera={{ fov: 30, near: 0.1, far: 60, position: [0, 1.7, 9.4] }}
-      onCreated={({ camera }) => camera.lookAt(0, 0.85, 0)}
+      camera={{ fov: 34, near: 0.1, far: 60, position: [0.25, 0.05, 7.4] }}
     >
       <Suspense fallback={null}>
-        {/* restrained black/gold lighting */}
         <ambientLight intensity={0.5} color="#fff0da" />
-        <directionalLight position={[5, 7, 5]} intensity={1.35} color="#ffe6b8" />
+        <directionalLight position={[5, 7, 5]} intensity={1.2} color="#ffe6b8" />
         <directionalLight position={[-6, 3, 2]} intensity={0.4} color="#d8a94f" />
 
-        {/* local light-studio for metallic reflections — no network fetch */}
         <Environment resolution={64}>
-          <Lightformer
-            intensity={1.6}
-            color="#f3d791"
-            position={[4, 4, 4]}
-            scale={[7, 3, 1]}
-          />
-          <Lightformer
-            intensity={0.8}
-            color="#fff6e6"
-            position={[-5, 6, -3]}
-            scale={[9, 3, 1]}
-          />
-          <Lightformer
-            intensity={1}
-            color="#b97f2e"
-            position={[0, -3, 6]}
-            scale={[12, 2, 1]}
-          />
+          <Lightformer intensity={1.6} color="#f3d791" position={[4, 4, 4]} scale={[7, 3, 1]} />
+          <Lightformer intensity={0.8} color="#fff6e6" position={[-5, 6, -3]} scale={[9, 3, 1]} />
+          <Lightformer intensity={1} color="#b97f2e" position={[0, -3, 6]} scale={[12, 2, 1]} />
         </Environment>
 
         <StageRoot>
-          <MacUnit unit="A" projectIdx={aIdx} settledIdx={settledIdx} />
-          <MacUnit unit="B" projectIdx={bIdx} settledIdx={settledIdx} />
+          <MacUnit unit="A" projectIdx={aIdx} settledIdx={settledIdx} reg={reg} />
+          <MacUnit unit="B" projectIdx={bIdx} settledIdx={settledIdx} reg={reg} />
           <ContactShadows
             position={[0, 0.005, 0]}
             opacity={0.55}
@@ -492,6 +628,8 @@ export default function MacBook3D({
             color="#000000"
           />
         </StageRoot>
+
+        <CameraRig reg={reg} />
       </Suspense>
     </Canvas>
   );

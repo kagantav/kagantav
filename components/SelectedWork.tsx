@@ -120,13 +120,11 @@ function DevicePair({
   refs,
   hiddenAtRest,
   settled,
-  interactive,
 }: {
   project: FeaturedProject;
   refs: PairRefs;
   hiddenAtRest: boolean;
   settled: boolean;
-  interactive: boolean;
 }) {
   return (
     <div
@@ -134,7 +132,7 @@ function DevicePair({
       className={`${styles.pair} ${hiddenAtRest ? styles.pairResting : ""}`}
     >
       {/* iPhone — companion device; the MacBook is the 3D model behind */}
-      <div ref={refs.phone} className={styles.phoneWrap}>
+      <div ref={refs.phone} className={styles.phoneWrap} data-sw-phone="">
         <div className={styles.phoneFloat} data-sw-float="phone">
           <div className={styles.phoneScreen}>
             <ScreenMedia
@@ -142,7 +140,7 @@ function DevicePair({
               project={project}
               variant="mobile"
               settled={settled}
-              interactive={interactive}
+              interactive={false}
             />
           </div>
           <Image
@@ -179,14 +177,109 @@ export default function SelectedWork() {
   const [k, setK] = useState(0);
   /* which project the right panel shows */
   const [textIdx, setTextIdx] = useState(0);
-  /* which project (if any) is settled — gates iframe mounting */
+  /* which project (if any) is settled — gates video playback + live mode */
   const [settled, setSettled] = useState<number>(0);
-  /* explicit user opt-in for live iframe interaction */
-  const [interactIdx, setInteractIdx] = useState<number | null>(null);
+
+  /* ── CANLI İNCELE (screen-dive live mode) ── */
+  const [live, setLive] = useState<"off" | "enter" | "on" | "exit">("off");
+  const [frameState, setFrameState] = useState<"loading" | "ok" | "fail">(
+    "loading"
+  );
+  const liveBtnRef = useRef<HTMLButtonElement>(null);
+  const savedScrollY = useRef(0);
 
   const kRef = useRef(0);
   const textIdxRef = useRef(0);
   const settledRef = useRef(0);
+
+  const liveSrcOf = (proj: FeaturedProject) =>
+    proj.desktopMedia.type === "iframe" && proj.desktopMedia.src
+      ? proj.desktopMedia.src
+      : proj.liveUrl;
+
+  const enterLive = (idx: number) => {
+    if (live !== "off" || settled !== idx) return;
+    const src = liveSrcOf(FEATURED_PROJECTS[idx]);
+    if (!src) return;
+    savedScrollY.current = window.scrollY;
+    swScroll.liveIdx = idx;
+    swScroll.liveTarget = 1;
+    document.documentElement.style.overflow = "hidden";
+    setFrameState("loading");
+    setLive("enter");
+    gsap.to("[data-sw-panel], [data-sw-phone], [data-sw-glow]", {
+      autoAlpha: 0,
+      duration: 0.5,
+      ease: "power2.in",
+    });
+  };
+
+  const exitLive = () => {
+    if (live !== "on" && live !== "enter") return;
+    setLive("exit");
+    // let the iframe fade first, then pull the camera back out
+    window.setTimeout(() => {
+      swScroll.liveTarget = 0;
+    }, 240);
+  };
+
+  /* enter: flip to "on" once the camera has reached the display;
+     exit: restore everything once the camera is back out */
+  useEffect(() => {
+    if (live === "enter") {
+      const id = window.setInterval(() => {
+        if (swScroll.live > 0.88) setLive("on");
+      }, 60);
+      return () => window.clearInterval(id);
+    }
+    if (live === "exit") {
+      const id = window.setInterval(() => {
+        if (swScroll.live < 0.08) {
+          document.documentElement.style.overflow = "";
+          window.scrollTo(0, savedScrollY.current);
+          gsap.to("[data-sw-panel], [data-sw-phone], [data-sw-glow]", {
+            autoAlpha: 1,
+            duration: 0.55,
+            ease: "power2.out",
+          });
+          swScroll.liveIdx = -1;
+          setLive("off");
+          liveBtnRef.current?.focus();
+        }
+      }, 80);
+      return () => window.clearInterval(id);
+    }
+  }, [live]);
+
+  /* Escape closes live mode; safety-restore scroll lock on unmount */
+  useEffect(() => {
+    if (live === "off") return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") exitLive();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [live]);
+
+  useEffect(
+    () => () => {
+      document.documentElement.style.overflow = "";
+      swScroll.liveTarget = 0;
+      swScroll.liveIdx = -1;
+    },
+    []
+  );
+
+  /* CSP / X-Frame-Options fallback: if the site never loads, say so */
+  useEffect(() => {
+    if (live !== "on" || frameState !== "loading") return;
+    const t = window.setTimeout(
+      () => setFrameState((f) => (f === "loading" ? "fail" : f)),
+      6000
+    );
+    return () => window.clearTimeout(t);
+  }, [live, frameState]);
 
   /* pair A carries even projects, pair B odd — recycled alternately */
   const aIdx = Math.min(k % 2 === 0 ? k : k + 1, N - 1);
@@ -235,7 +328,6 @@ export default function SelectedWork() {
         if (kk !== kRef.current) {
           kRef.current = kk;
           setK(kk);
-          setInteractIdx(null);
         }
         const ti = lt < 0.55 ? kk : kk + 1;
         if (ti !== textIdxRef.current) {
@@ -255,32 +347,35 @@ export default function SelectedWork() {
         if (!outPair || !inPair || !outPhone || !inPhone) return;
 
         const vw = window.innerWidth / 100;
-        const tr = clamp01((lt - 0.15) / 0.7); // 15%–85% transition window
+        const tr = clamp01((lt - 0.15) / 0.67); // physical travel 15%→82%
 
-        /* ── outgoing: drifts right, tilts away, recedes, fades late ── */
+        /* ── outgoing pair: fade begins only late in the exit path ── */
         const to = easeIO(tr);
-        const outFade = tr < 0.72 ? 1 : 1 - (tr - 0.72) / 0.28;
-        const outBlur = tr > 0.82 ? ((tr - 0.82) / 0.18) * 3 : 0;
+        const outFade = 1 - easeIO(clamp01((lt - 0.58) / 0.3)); // 58%→88%
+        const outBlur = lt > 0.78 ? clamp01((lt - 0.78) / 0.12) * 2.5 : 0;
         gsap.set(outPair, {
           x: 42 * vw * to,
-          z: -150 * to, // recedes backward — real 3D depth sorts the pairs
+          z: -150 * to,
           rotationY: 10 * to,
           rotationX: 2 * to,
           scale: 1 - 0.18 * to,
           autoAlpha: outFade,
           filter: outBlur > 0.05 ? `blur(${outBlur.toFixed(2)}px)` : "none",
         });
+        /* outgoing iPhone: swells toward the camera, arcs right, tilts
+           away and fades slightly BEFORE its MacBook */
         gsap.set(outPhone, {
-          x: 7 * vw * to,
-          y: -22 * bump(to),
-          rotationY: 4 * to,
-          rotationZ: 2 * to,
-          scale: 1 + 0.06 * bump(to),
+          x: 9 * vw * to,
+          y: -38 * bump(to),
+          rotationY: 9 * to,
+          rotationZ: 3.5 * to,
+          scale: 1 + 0.09 * bump(to),
+          autoAlpha: 1 - easeIO(clamp01((lt - 0.52) / 0.24)),
         });
 
         /* ── incoming: sweeps in from stage-left, straightens, settles ── */
         const ti2 = easeOut(tr);
-        const inFade = clamp01(tr / 0.3);
+        const inFade = clamp01(tr / 0.32);
         gsap.set(inPair, {
           x: -44 * vw * (1 - ti2),
           y: 20 * (1 - ti2),
@@ -291,13 +386,17 @@ export default function SelectedWork() {
           autoAlpha: inFade,
           filter: "none",
         });
-        const phT = easeOut(clamp01((tr - 0.1) / 0.9)); // phone arrives late
+        /* incoming iPhone: farther left, stronger tilt, shallow arc around
+           the MacBook's front edge, arrives after the MacBook */
+        const ph = clamp01((tr - 0.16) / 0.84);
+        const phE = easeOut(ph);
         gsap.set(inPhone, {
-          x: -9 * vw * (1 - phT),
-          y: 0,
-          rotationY: -4 * (1 - phT),
-          rotationZ: -2 * (1 - phT),
-          scale: 1 + 0.04 * (1 - phT),
+          x: -12 * vw * (1 - phE),
+          y: 30 * (1 - phE) - 22 * bump(phE),
+          rotationY: -10 * (1 - phE),
+          rotationZ: -3 * (1 - phE),
+          scale: 1 + 0.05 * (1 - phE),
+          autoAlpha: clamp01(ph / 0.3),
         });
 
         /* ── glow hands off from the outgoing pair to the incoming ── */
@@ -455,20 +554,18 @@ export default function SelectedWork() {
               refs={{ pair: pairARef, phone: phoneARef }}
               hiddenAtRest={false}
               settled={settled === aIdx}
-              interactive={interactIdx === aIdx}
             />
             <DevicePair
               project={FEATURED_PROJECTS[bIdx]}
               refs={{ pair: pairBRef, phone: phoneBRef }}
               hiddenAtRest
               settled={settled === bIdx}
-              interactive={interactIdx === bIdx}
             />
           </div>
         </div>
 
         {/* ── right content panel ── */}
-        <div className={styles.panel}>
+        <div className={styles.panel} data-sw-panel>
           <div className={styles.counterRow}>
             <span className={styles.counterWin} aria-hidden="true">
               <span className={styles.counterStrip} data-sw-countstrip>
@@ -516,12 +613,15 @@ export default function SelectedWork() {
                 Coming Soon
               </span>
             )}
-            {p.desktopMedia.type === "iframe" && p.desktopMedia.src && (
+            {liveSrcOf(p) && (
               <button
-                className={styles.btnGhost}
-                onClick={() => setInteractIdx(textIdx)}
+                ref={liveBtnRef}
+                className={styles.btnLive}
+                disabled={settled !== textIdx || live !== "off"}
+                onClick={() => enterLive(textIdx)}
               >
-                Live Preview
+                Canlı İncele
+                <i className={styles.liveDot} aria-hidden="true" />
               </button>
             )}
             {p.caseUrl && (
@@ -537,33 +637,68 @@ export default function SelectedWork() {
         </div>
       </div>
 
-      {/* live iframe preview — mounts ONLY while open, one at a time */}
-      {interactIdx !== null &&
-        FEATURED_PROJECTS[interactIdx]?.desktopMedia.type === "iframe" &&
-        FEATURED_PROJECTS[interactIdx].desktopMedia.src && (
-          <div
-            className={styles.liveModal}
-            role="dialog"
-            aria-label={`${FEATURED_PROJECTS[interactIdx].name} live preview`}
-          >
-            <button
-              className={styles.liveModalBackdrop}
-              aria-label="Close preview"
-              onClick={() => setInteractIdx(null)}
-            />
-            <div className={styles.liveModalFrame}>
-              <header>
-                <span>{FEATURED_PROJECTS[interactIdx].name}</span>
-                <button onClick={() => setInteractIdx(null)}>Close ✕</button>
-              </header>
-              <iframe
-                src={FEATURED_PROJECTS[interactIdx].desktopMedia.src!}
-                title={`${FEATURED_PROJECTS[interactIdx].name} live preview`}
-                sandbox="allow-scripts allow-same-origin allow-forms"
-              />
+      {/* ── CANLI İNCELE overlay: the camera dives into the display in 3D;
+          once the screen fills the viewport this fixed layer blends in and
+          hands off to a single live iframe ── */}
+      {live !== "off" && (
+        <div
+          className={styles.liveDive}
+          data-state={live}
+          role="dialog"
+          aria-label={`${FEATURED_PROJECTS[swScroll.liveIdx]?.name ?? ""} canlı inceleme`}
+        >
+          <div className={styles.liveVeil} aria-hidden="true" />
+
+          {(live === "on" || live === "exit") && (
+            <div className={styles.liveFrame}>
+              {frameState === "loading" && (
+                <div className={styles.liveLoading}>
+                  <i />
+                  <span>Canlı önizleme yükleniyor…</span>
+                </div>
+              )}
+              {frameState === "fail" ? (
+                <div className={styles.liveFallback}>
+                  <p>
+                    Bu site gömülü önizlemeye izin vermiyor
+                    <br />
+                    (X-Frame-Options / CSP).
+                  </p>
+                  <a
+                    href={liveSrcOf(FEATURED_PROJECTS[swScroll.liveIdx]) ?? "#"}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Yeni Sekmede Aç
+                    <svg viewBox="0 0 14 14" aria-hidden="true">
+                      <path
+                        d="M2 12L12 2M12 2H4.5M12 2v7.5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </a>
+                </div>
+              ) : (
+                <iframe
+                  src={liveSrcOf(FEATURED_PROJECTS[swScroll.liveIdx]) ?? undefined}
+                  title="Canlı önizleme"
+                  onLoad={() => setFrameState("ok")}
+                  data-ready={frameState === "ok"}
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                />
+              )}
             </div>
-          </div>
-        )}
+          )}
+
+          <button className={styles.liveExit} onClick={exitLive}>
+            Canlı İncelemeden Çık ✕
+          </button>
+        </div>
+      )}
     </section>
   );
 }
