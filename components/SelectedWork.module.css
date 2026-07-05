@@ -555,6 +555,25 @@
   border-color: rgba(243, 215, 145, 0.85);
 }
 
+/* dev-only continuity inspector */
+.debugHud {
+  position: fixed;
+  left: 14px;
+  bottom: 14px;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  border: 1px solid rgba(216, 169, 79, 0.35);
+  border-radius: 8px;
+  background: rgba(4, 2, 1, 0.85);
+  font-family: monospace;
+  font-size: 11px;
+  color: #d8a94f;
+  pointer-events: none;
+}
+
 /* ── CANLI İNCELE — screen-dive overlay ─────────── */
 .liveDive {
   position: fixed;

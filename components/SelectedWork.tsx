@@ -281,6 +281,35 @@ export default function SelectedWork() {
     return () => window.clearTimeout(t);
   }, [live, frameState]);
 
+  /* dev-only continuity inspector — visit with ?swdebug to enable */
+  const [dbg, setDbg] = useState<{
+    t: number;
+    d: number;
+    k: number;
+    lt: number;
+  } | null>(null);
+  useEffect(() => {
+    if (
+      process.env.NODE_ENV !== "development" ||
+      !window.location.search.includes("swdebug")
+    )
+      return;
+    const id = window.setInterval(() => {
+      const f = Math.min(
+        swScroll.smooth * TRANSITIONS,
+        TRANSITIONS - 1e-5
+      );
+      const kk = Math.max(0, Math.floor(f));
+      setDbg({
+        t: swScroll.progress,
+        d: swScroll.smooth,
+        k: kk,
+        lt: f - kk,
+      });
+    }, 120);
+    return () => window.clearInterval(id);
+  }, []);
+
   /* pair A carries even projects, pair B odd — recycled alternately */
   const aIdx = Math.min(k % 2 === 0 ? k : k + 1, N - 1);
   const bIdx = Math.min(k % 2 === 0 ? k + 1 : k, N - 1);
@@ -316,9 +345,10 @@ export default function SelectedWork() {
       const easeOut = gsap.parseEase("power3.out");
       const bump = (t: number) => Math.sin(Math.PI * t);
 
-      const apply = (self: ScrollTrigger) => {
-        const p = self.progress;
-        swScroll.progress = p; // the 3D MacBooks read this every frame
+      /* every visual (DOM phones, text, glow, counter AND the 3D scene)
+         derives from ONE damped progress value — raw ScrollTrigger
+         progress is only ever a target */
+      const applyVisual = (p: number) => {
         if (progFill) gsap.set(progFill, { scaleX: p });
 
         const f = Math.min(p * TRANSITIONS, TRANSITIONS - 1e-5);
@@ -347,12 +377,13 @@ export default function SelectedWork() {
         if (!outPair || !inPair || !outPhone || !inPhone) return;
 
         const vw = window.innerWidth / 100;
-        const tr = clamp01((lt - 0.15) / 0.67); // physical travel 15%→82%
+        const smoother = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
+        const tr = clamp01((lt - 0.15) / 0.8); // physical travel 15%→95%
 
-        /* ── outgoing pair: fade begins only late in the exit path ── */
+        /* ── outgoing pair: long continuous fade (45%→98% of the exit) ── */
         const to = easeIO(tr);
-        const outFade = 1 - easeIO(clamp01((lt - 0.58) / 0.3)); // 58%→88%
-        const outBlur = lt > 0.78 ? clamp01((lt - 0.78) / 0.12) * 2.5 : 0;
+        const outFade = 1 - smoother(clamp01((lt - 0.5) / 0.46));
+        const outBlur = lt > 0.88 ? clamp01((lt - 0.88) / 0.1) * 2.2 : 0;
         gsap.set(outPair, {
           x: 42 * vw * to,
           z: -150 * to,
@@ -370,7 +401,7 @@ export default function SelectedWork() {
           rotationY: 9 * to,
           rotationZ: 3.5 * to,
           scale: 1 + 0.09 * bump(to),
-          autoAlpha: 1 - easeIO(clamp01((lt - 0.52) / 0.24)),
+          autoAlpha: 1 - smoother(clamp01((lt - 0.46) / 0.42)),
         });
 
         /* ── incoming: sweeps in from stage-left, straightens, settles ── */
@@ -449,9 +480,28 @@ export default function SelectedWork() {
           pin: true,
           anticipatePin: 1,
           invalidateOnRefresh: true,
-          onUpdate: apply,
-          onRefresh: apply,
+          onUpdate(self) {
+            swScroll.progress = self.progress;
+          },
+          onRefresh(self) {
+            swScroll.progress = self.progress;
+          },
         });
+
+        /* single damped-progress writer: absorbs uneven wheel input and
+           keeps DOM + 3D perfectly in sync (runs even while the canvas
+           is still loading the model) */
+        const tick = (_t: number, deltaMS: number) => {
+          const dt = Math.min(deltaMS / 1000, 0.05);
+          swScroll.smooth = gsap.utils.interpolate(
+            swScroll.smooth,
+            swScroll.progress,
+            1 - Math.exp(-6 * dt)
+          );
+          applyVisual(swScroll.smooth);
+        };
+        gsap.ticker.add(tick);
+        applyVisual(0);
 
         // idle float on the inner wrappers — never fights the scrub
         gsap.utils
@@ -490,6 +540,8 @@ export default function SelectedWork() {
             scrub: true,
           },
         });
+
+        return () => gsap.ticker.remove(tick);
       });
 
       // pointer parallax on the float wrappers (cursor devices only)
@@ -697,6 +749,21 @@ export default function SelectedWork() {
           <button className={styles.liveExit} onClick={exitLive}>
             Canlı İncelemeden Çık ✕
           </button>
+        </div>
+      )}
+
+      {/* dev-only continuity inspector (?swdebug) */}
+      {dbg && (
+        <div className={styles.debugHud}>
+          <span>target {dbg.t.toFixed(4)}</span>
+          <span>damped {dbg.d.toFixed(4)}</span>
+          <span>
+            seg {dbg.k} · lt {dbg.lt.toFixed(3)}
+          </span>
+          <span>
+            A[{dbg.k % 2 === 0 ? "OUT" : "IN"}] #{pad(aIdx)} — B[
+            {dbg.k % 2 === 0 ? "IN" : "OUT"}] #{pad(bIdx)}
+          </span>
         </div>
       )}
     </section>

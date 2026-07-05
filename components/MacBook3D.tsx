@@ -34,10 +34,11 @@ const LID_OPEN = -Math.PI / 2 - 0.14;
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const smooth = (t: number) => t * t * (3 - 2 * t);
+/** smootherstep — zero 1st AND 2nd derivative at both ends */
+const smoother = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
 const bump = (t: number) => Math.sin(Math.PI * clamp01(t));
 const easeIO = gsap.parseEase("power2.inOut");
 const easeOut = gsap.parseEase("power3.out");
-const backOut = gsap.parseEase("back.out(1.3)");
 
 const pad = (n: number) => String(n + 1).padStart(2, "0");
 
@@ -384,38 +385,38 @@ function MacUnit({
     let presence: number; // drives rim light + screen brightness
 
     if (isOut) {
-      /* showcase → rotate away, curve right & back, close, fade late */
-      const tr = clamp01((lt - 0.15) / 0.67); // physical exit 15%→82%
+      /* showcase → rotate away, curve right & back, close, LONG fade.
+         Physical travel spans 15%→95% so motion never stops before the
+         opacity reaches zero. */
+      const tr = clamp01((lt - 0.15) / 0.8);
       const e = easeIO(tr);
       x = lerp(P_SHOW.x, P_OUT1.x, e);
       y = lerp(P_SHOW.y, P_OUT1.y, e) + 0.18 * bump(e);
       z = lerp(P_SHOW.z, P_OUT1.z, e) - 0.2 * bump(e);
-      ry = lerp(P_SHOW.ry, P_OUT1.ry, easeIO(clamp01(tr * 1.15))); // rotates first
+      ry = lerp(P_SHOW.ry, P_OUT1.ry, easeIO(clamp01(tr * 1.12)));
       rx = lerp(P_SHOW.rx, P_OUT1.rx, e);
       rz = lerp(P_SHOW.rz, P_OUT1.rz, e);
       s = lerp(P_SHOW.s, P_OUT1.s, e);
-      const fade = smooth(clamp01((lt - 0.58) / 0.3)); // fades 58%→88%
-      opacity = 1 - fade;
-      lidT = lt < 0.15 ? 1 : 1 - 0.9 * smooth(clamp01((lt - 0.18) / 0.55));
-      presence = 1 - smooth(clamp01((lt - 0.35) / 0.4));
+      // continuous long fade: 1 until ~45% of the exit, zero by ~98%
+      opacity = 1 - smoother(clamp01((lt - 0.5) / 0.46));
+      lidT = lt < 0.15 ? 1 : 1 - 0.9 * smoother(clamp01((lt - 0.18) / 0.6));
+      presence = 1 - smoother(clamp01((lt - 0.35) / 0.45));
     } else {
-      /* far left & back, lid ajar → curved arrival, overshoot, settle */
-      const tr = clamp01((lt - 0.15) / 0.67);
-      const e = easeOut(tr);
-      const eb = backOut(tr); // gentle rotational overshoot
+      /* far left & back, lid ajar → curved arrival that decelerates
+         naturally: no overshoot, only a whisper of settle at the end */
+      const tr = clamp01((lt - 0.15) / 0.8);
+      const e = easeOut(tr); // long power3 tail = visible deceleration
       x = lerp(P_IN0.x, P_SHOW.x, e);
       y = lerp(P_IN0.y, P_SHOW.y, e) + 0.22 * bump(e);
       z = lerp(P_IN0.z, P_SHOW.z, e) - 0.15 * bump(e * 0.8);
-      ry = lerp(P_IN0.ry, P_SHOW.ry, eb);
+      ry = lerp(P_IN0.ry, P_SHOW.ry, e) + 0.012 * (1 - smoother(clamp01((lt - 0.8) / 0.2)));
       rx = lerp(P_IN0.rx, P_SHOW.rx, e);
       rz = lerp(P_IN0.rz, P_SHOW.rz, e);
       s = lerp(P_IN0.s, P_SHOW.s, e);
-      opacity = smooth(clamp01(tr / 0.32));
-      lidT = 0.12 + 0.88 * easeOut(clamp01((lt - 0.3) / 0.52));
-      presence = smooth(clamp01((lt - 0.35) / 0.45));
-      // final settle breath 82%→100%
-      const st = smooth(clamp01((lt - 0.82) / 0.18));
-      s *= 1 - 0.006 * bump(st);
+      opacity = smoother(clamp01(tr / 0.34));
+      // lid finishes opening slightly BEFORE the device fully settles
+      lidT = 0.12 + 0.88 * easeOut(clamp01((lt - 0.28) / 0.5));
+      presence = smoother(clamp01((lt - 0.35) / 0.45));
     }
 
     /* idle breath — only while present and calm */
@@ -501,12 +502,9 @@ function CameraRig({ reg }: { reg: Registry }) {
 
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, 0.05);
-    swScroll.smooth = THREE.MathUtils.damp(
-      swScroll.smooth,
-      swScroll.progress,
-      6,
-      dt
-    );
+    // swScroll.smooth is damped by SelectedWork's gsap ticker (single
+    // writer, works even while this canvas is suspended) — only the
+    // live-dive value is damped here.
     swScroll.live = THREE.MathUtils.damp(
       swScroll.live,
       swScroll.liveTarget,
@@ -526,10 +524,13 @@ function CameraRig({ reg }: { reg: Registry }) {
     let py = (portrait ? -0.4 : 0.05) + 0.08 * amp * b;
     let pz = (portrait ? 7.9 : 7.4) - 0.32 * amp * b;
     const lookBase = portrait ? -0.32 : 0.08;
+    /* look-at sweep: briefly toward the departing screen, then across to
+       the incoming one, back to center. Both terms are ZERO at phase 0
+       and 1, so segment boundaries are perfectly continuous. */
     let lx =
-      phase < 0.5
-        ? lerp(0.35 * amp, -0.5 * amp, smooth(phase / 0.5))
-        : lerp(-0.5 * amp, 0, smooth((phase - 0.5) / 0.5));
+      amp *
+      (0.26 * bump(clamp01(phase / 0.55)) -
+        0.48 * bump(clamp01((phase - 0.3) / 0.7)));
     let ly = lookBase - 0.05 * amp * b;
     let lz = 0;
     let fov = 34 - 2.6 * b;

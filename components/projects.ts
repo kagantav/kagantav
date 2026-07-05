@@ -9,6 +9,13 @@
  *    Leave `src: null` to keep the styled placeholder screen.
  */
 
+/**
+ * TEMP — development-only placeholder so the CANLI İNCELE interaction can
+ * be tested end-to-end before real client URLs exist. Replace every usage
+ * with the project's real URL (or null) before launch.
+ */
+const DEV_PLACEHOLDER_LIVE_URL = "https://example.com";
+
 export type PreviewType = "image" | "video" | "iframe";
 
 export interface ProjectMedia {
@@ -43,7 +50,7 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
     stack: ["Next.js", "TypeScript", "PostgreSQL", "WebSockets"],
     desktopMedia: { type: "image", src: null },
     mobileMedia: { type: "image", src: null },
-    liveUrl: null,
+    liveUrl: DEV_PLACEHOLDER_LIVE_URL, // TEMP dev-only
     caseUrl: null,
     accentColor: "#d8a94f",
     year: "2026",
@@ -57,7 +64,7 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
     stack: ["Next.js", "Shopify", "Tailwind", "Stripe"],
     desktopMedia: { type: "image", src: null },
     mobileMedia: { type: "image", src: null },
-    liveUrl: null,
+    liveUrl: DEV_PLACEHOLDER_LIVE_URL, // TEMP dev-only
     accentColor: "#e8c06a",
     year: "2026",
   },
@@ -70,7 +77,7 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
     stack: ["React Native", "Node.js", "GraphQL"],
     desktopMedia: { type: "image", src: null },
     mobileMedia: { type: "image", src: null },
-    liveUrl: null,
+    liveUrl: DEV_PLACEHOLDER_LIVE_URL, // TEMP dev-only
     accentColor: "#c98f3a",
     year: "2025",
   },
@@ -83,7 +90,7 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
     stack: ["Next.js", "Three.js", "GSAP", "Sanity"],
     desktopMedia: { type: "image", src: null },
     mobileMedia: { type: "image", src: null },
-    liveUrl: null,
+    liveUrl: DEV_PLACEHOLDER_LIVE_URL, // TEMP dev-only
     accentColor: "#f0d9a8",
     year: "2025",
   },
@@ -96,7 +103,7 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
     stack: ["React", "Node.js", "ClickHouse", "Docker"],
     desktopMedia: { type: "image", src: null },
     mobileMedia: { type: "image", src: null },
-    liveUrl: null,
+    liveUrl: DEV_PLACEHOLDER_LIVE_URL, // TEMP dev-only
     accentColor: "#b97f2e",
     year: "2025",
   },
@@ -109,7 +116,7 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
     stack: ["Next.js", "Mapbox", "Prisma", "PostgreSQL"],
     desktopMedia: { type: "image", src: null },
     mobileMedia: { type: "image", src: null },
-    liveUrl: null,
+    liveUrl: DEV_PLACEHOLDER_LIVE_URL, // TEMP dev-only
     accentColor: "#dfa855",
     year: "2024",
   },
