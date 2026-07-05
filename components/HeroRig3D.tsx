@@ -84,16 +84,16 @@ const M_CAM = {
 const M_CORE: Triple = {
   hero: { pos: [0, -1.32, 0], rot: [0, -0.06, 0], scale: 0.78 },
   mid: { pos: [0, -0.4, -0.3], rot: [0.02, 0.1, -0.01], scale: 0.66 },
-  /* final: he stands big in the upper frame; the three cards form a
-     side-by-side row directly under the platform */
-  about: { pos: [0, -0.15, 0], rot: [0, 0.05, 0], scale: 0.6 },
+  /* final: he fills the upper frame right under the header; the three
+     cards form a side-by-side row directly under the platform */
+  about: { pos: [0, 0.5, 0], rot: [0, 0.05, 0], scale: 0.65 },
 };
 
 const M_CARDSG: Triple = {
   hero: { pos: [0, -1.32, 0], rot: [0, -0.06, 0], scale: 0.66 },
   mid: { pos: [0, -0.35, -0.25], rot: [0.01, 0.08, 0], scale: 0.56 },
   /* the row anchor just below the platform */
-  about: { pos: [0, -1.85, -0.1], rot: [0, 0, 0], scale: 1 },
+  about: { pos: [0, -1.28, -0.1], rot: [0, 0, 0], scale: 1 },
 };
 
 /* Mobile card-local About poses: one straight row of three, left → right.
@@ -101,17 +101,17 @@ const M_CARDSG: Triple = {
 const STACK_M: Triple = {
   hero: STACK.hero,
   mid: STACK.mid,
-  about: { pos: [-0.78, 0, 0], rot: [0.01, 0.05, -0.01], scale: 0.72 },
+  about: { pos: [-0.8, 0, 0], rot: [0.01, 0.05, -0.01], scale: 0.76 },
 };
 const EXPERTISE_M: Triple = {
   hero: EXPERTISE.hero,
   mid: EXPERTISE.mid,
-  about: { pos: [0, 0, 0.06], rot: [0, 0, 0], scale: 0.74 },
+  about: { pos: [0, 0, 0.06], rot: [0, 0, 0], scale: 0.78 },
 };
 const FOCUS_M: Triple = {
   hero: FOCUS.hero,
   mid: FOCUS.mid,
-  about: { pos: [0.78, 0, 0.12], rot: [0.01, -0.05, 0.01], scale: 0.7 },
+  about: { pos: [0.8, 0, 0.12], rot: [0.01, -0.05, 0.01], scale: 0.74 },
 };
 
 /* pointer parallax amplitude per layer (world units, sign = direction) */
