@@ -16,8 +16,9 @@ import {
   type ProjectMedia,
 } from "./projects";
 import styles from "./SelectedWork.module.css";
+import MacBook3D from "./MacBook3D";
+import { swScroll } from "./swScrollBus";
 
-import macbookFrame from "@/public/assets/macbook.png";
 import iphoneFrame from "@/public/assets/iphone.png";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -120,55 +121,19 @@ function DevicePair({
   hiddenAtRest,
   settled,
   interactive,
-  onInteract,
 }: {
   project: FeaturedProject;
   refs: PairRefs;
   hiddenAtRest: boolean;
   settled: boolean;
   interactive: boolean;
-  onInteract: () => void;
 }) {
-  const showInteract =
-    settled &&
-    !interactive &&
-    project.desktopMedia.type === "iframe" &&
-    !!project.desktopMedia.src;
-
   return (
     <div
       ref={refs.pair}
       className={`${styles.pair} ${hiddenAtRest ? styles.pairResting : ""}`}
     >
-      {/* MacBook — heavier, more stable */}
-      <div className={styles.macWrap}>
-        <div className={styles.macFloat} data-sw-float="mac">
-          <div className={styles.macScreen}>
-            <ScreenMedia
-              media={project.desktopMedia}
-              project={project}
-              variant="desktop"
-              settled={settled}
-              interactive={interactive}
-            />
-            {showInteract && (
-              <button className={styles.interactBtn} onClick={onInteract}>
-                Interact
-                <i />
-              </button>
-            )}
-          </div>
-          <Image
-            src={macbookFrame}
-            alt=""
-            fill
-            sizes="(max-width: 1023px) 92vw, 56vw"
-            className={styles.frameImg}
-          />
-        </div>
-      </div>
-
-      {/* iPhone — closer to the viewer, its own trajectory */}
+      {/* iPhone — companion device; the MacBook is the 3D model behind */}
       <div ref={refs.phone} className={styles.phoneWrap}>
         <div className={styles.phoneFloat} data-sw-float="phone">
           <div className={styles.phoneScreen}>
@@ -260,6 +225,7 @@ export default function SelectedWork() {
 
       const apply = (self: ScrollTrigger) => {
         const p = self.progress;
+        swScroll.progress = p; // the 3D MacBooks read this every frame
         if (progFill) gsap.set(progFill, { scaleX: p });
 
         const f = Math.min(p * TRANSITIONS, TRANSITIONS - 1e-5);
@@ -479,6 +445,9 @@ export default function SelectedWork() {
           aria-hidden="true"
         />
 
+        {/* real 3D MacBooks — full-stage canvas so they can enter/exit */}
+        <MacBook3D aIdx={aIdx} bIdx={bIdx} settledIdx={settled} />
+
         <div className={styles.devices3d}>
           <div className={styles.devices} data-sw-devices>
             <DevicePair
@@ -487,7 +456,6 @@ export default function SelectedWork() {
               hiddenAtRest={false}
               settled={settled === aIdx}
               interactive={interactIdx === aIdx}
-              onInteract={() => setInteractIdx(aIdx)}
             />
             <DevicePair
               project={FEATURED_PROJECTS[bIdx]}
@@ -495,7 +463,6 @@ export default function SelectedWork() {
               hiddenAtRest
               settled={settled === bIdx}
               interactive={interactIdx === bIdx}
-              onInteract={() => setInteractIdx(bIdx)}
             />
           </div>
         </div>
@@ -549,6 +516,14 @@ export default function SelectedWork() {
                 Coming Soon
               </span>
             )}
+            {p.desktopMedia.type === "iframe" && p.desktopMedia.src && (
+              <button
+                className={styles.btnGhost}
+                onClick={() => setInteractIdx(textIdx)}
+              >
+                Live Preview
+              </button>
+            )}
             {p.caseUrl && (
               <a href={p.caseUrl} className={styles.btnGhost}>
                 View Case
@@ -561,6 +536,34 @@ export default function SelectedWork() {
           </div>
         </div>
       </div>
+
+      {/* live iframe preview — mounts ONLY while open, one at a time */}
+      {interactIdx !== null &&
+        FEATURED_PROJECTS[interactIdx]?.desktopMedia.type === "iframe" &&
+        FEATURED_PROJECTS[interactIdx].desktopMedia.src && (
+          <div
+            className={styles.liveModal}
+            role="dialog"
+            aria-label={`${FEATURED_PROJECTS[interactIdx].name} live preview`}
+          >
+            <button
+              className={styles.liveModalBackdrop}
+              aria-label="Close preview"
+              onClick={() => setInteractIdx(null)}
+            />
+            <div className={styles.liveModalFrame}>
+              <header>
+                <span>{FEATURED_PROJECTS[interactIdx].name}</span>
+                <button onClick={() => setInteractIdx(null)}>Close ✕</button>
+              </header>
+              <iframe
+                src={FEATURED_PROJECTS[interactIdx].desktopMedia.src!}
+                title={`${FEATURED_PROJECTS[interactIdx].name} live preview`}
+                sandbox="allow-scripts allow-same-origin allow-forms"
+              />
+            </div>
+          </div>
+        )}
     </section>
   );
 }

@@ -93,6 +93,8 @@
 
 /* ── Devices ───────────────────────────────────── */
 .devices3d {
+  position: relative;
+  z-index: 3; /* the DOM iPhone rides above the MacBook canvas */
   perspective: 1500px;
   min-width: 0;
 }
@@ -177,6 +179,55 @@
   z-index: 2;
 }
 
+/* full-stage canvas hosting the 3D MacBooks */
+.macCanvas {
+  position: absolute !important;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.lcdHtml {
+  pointer-events: none;
+}
+
+/* the MacBook display surface: pure black at rest, content fades in
+   only once the device has settled */
+.lcd {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #010101;
+  border-radius: 10px;
+}
+
+.lcd > .mediaFill,
+.lcd > .phDesktop {
+  opacity: 0;
+  transition: opacity 0.55s ease;
+}
+
+.lcdOn > .mediaFill,
+.lcdOn > .phDesktop {
+  opacity: 1;
+}
+
+/* glassy reflection that lives on the panel even when it's off */
+.lcdSheen {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      118deg,
+      rgba(255, 244, 220, 0.05) 0%,
+      transparent 26%,
+      transparent 62%,
+      rgba(216, 169, 79, 0.035) 100%
+    );
+  pointer-events: none;
+}
+
 .mediaFill {
   position: absolute;
   inset: 0;
@@ -199,6 +250,7 @@
   right: 4%;
   bottom: 6%;
   z-index: 5;
+  pointer-events: auto;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -501,6 +553,72 @@
 .btnGhost:hover {
   color: var(--gold-bright);
   border-color: rgba(243, 215, 145, 0.85);
+}
+
+/* ── Live preview modal (single iframe, mounted only while open) ── */
+.liveModal {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: grid;
+  place-items: center;
+  padding: 4vh 4vw;
+}
+
+.liveModalBackdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(3, 2, 1, 0.82);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  border: 0;
+  cursor: pointer;
+}
+
+.liveModalFrame {
+  position: relative;
+  width: min(1240px, 94vw);
+  height: min(82vh, 860px);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(216, 169, 79, 0.4);
+  border-radius: 14px;
+  overflow: hidden;
+  background: #060403;
+  box-shadow: 0 40px 90px rgba(0, 0, 0, 0.7), 0 0 60px rgba(216, 169, 79, 0.12);
+}
+
+.liveModalFrame header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  border-bottom: 1px solid rgba(216, 169, 79, 0.18);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-bright);
+}
+
+.liveModalFrame header button {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  cursor: pointer;
+  transition: color 0.25s ease;
+}
+
+.liveModalFrame header button:hover {
+  color: var(--gold-bright);
+}
+
+.liveModalFrame iframe {
+  flex: 1;
+  width: 100%;
+  border: 0;
+  background: #fff;
 }
 
 .progress {
