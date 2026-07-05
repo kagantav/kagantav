@@ -15,4 +15,10 @@ export const swScroll = {
   live: 0,
   /** project index the live dive targets */
   liveIdx: -1,
+  /**
+   * true while live mode owns the scene (enter → active → exit → scroll
+   * handoff). While frozen, `smooth` is never advanced — the base scene
+   * stays numerically identical no matter what the scroll position does.
+   */
+  frozen: false,
 };

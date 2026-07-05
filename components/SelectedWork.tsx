@@ -18,6 +18,7 @@ import {
 import styles from "./SelectedWork.module.css";
 import MacBook3D from "./MacBook3D";
 import { swScroll } from "./swScrollBus";
+import { scrollBridge } from "./scrollBridge";
 
 import iphoneFrame from "@/public/assets/iphone.png";
 
@@ -187,15 +188,19 @@ export default function SelectedWork() {
   );
   const liveBtnRef = useRef<HTMLButtonElement>(null);
   const savedScrollY = useRef(0);
+  /** scroll progress frozen at live-enter; restored verbatim at exit */
+  const frozenProg = useRef(0);
 
   const kRef = useRef(0);
   const textIdxRef = useRef(0);
   const settledRef = useRef(0);
 
-  const liveSrcOf = (proj: FeaturedProject) =>
-    proj.desktopMedia.type === "iframe" && proj.desktopMedia.src
-      ? proj.desktopMedia.src
-      : proj.liveUrl;
+  const liveSrcOf = (proj?: FeaturedProject) =>
+    proj
+      ? proj.desktopMedia.type === "iframe" && proj.desktopMedia.src
+        ? proj.desktopMedia.src
+        : proj.liveUrl
+      : null;
 
   /* Scroll lock WITHOUT layout shift: `overflow: hidden` removes the
      scrollbar, which resizes the canvas and shifts the whole stage —
@@ -233,21 +238,20 @@ export default function SelectedWork() {
     if (live !== "off" || settled !== idx) return;
     const src = liveSrcOf(FEATURED_PROJECTS[idx]);
     if (!src) return;
+    /* FREEZE the complete base scene: store the exact scroll state, pin
+       target and damped progress to it, and stop Lenis so no residual
+       inertia can move anything while live mode owns the camera. From
+       here every visible change is a pure function of swScroll.live. */
     savedScrollY.current = window.scrollY;
+    frozenProg.current = swScroll.smooth;
+    swScroll.progress = frozenProg.current;
+    swScroll.frozen = true;
+    scrollBridge.lenis?.stop();
     swScroll.liveIdx = idx;
     swScroll.liveTarget = 1;
     lockScroll();
     setFrameState("loading");
     setLive("enter");
-    // Panel copy melts away gently. The phone + glow are NOT tweened —
-    // applyVisual writes their alpha every ticker frame, so their live
-    // fade is derived from swScroll.live inside applyVisual itself
-    // (single writer, exactly reversible on exit).
-    gsap.to("[data-sw-panel]", {
-      autoAlpha: 0,
-      duration: 0.9,
-      ease: "power2.inOut",
-    });
   };
 
   const exitLive = () => {
@@ -260,9 +264,10 @@ export default function SelectedWork() {
   };
 
   /* enter: hand off to the DOM iframe once the display fills the view;
-     exit: pure reverse of the same clocked progress — the panel fades
-     back during the final 25%, scroll unlocks only at exactly 0 */
-  const restoredRef = useRef(false);
+     exit: pure reverse of the same clocked progress. Scroll control is
+     handed back ONLY after liveProgress is exactly 0 AND the frozen
+     scroll state has been restored and resynced for two full frames. */
+  const finishingRef = useRef(false);
   useEffect(() => {
     if (live === "enter") {
       const id = window.setInterval(() => {
@@ -271,24 +276,34 @@ export default function SelectedWork() {
       return () => window.clearInterval(id);
     }
     if (live === "exit") {
-      restoredRef.current = false;
+      finishingRef.current = false;
       const id = window.setInterval(() => {
-        if (!restoredRef.current && swScroll.live < 0.3) {
-          restoredRef.current = true;
-          gsap.to("[data-sw-panel]", {
-            autoAlpha: 1,
-            duration: 0.7,
-            ease: "power2.out",
-          });
-        }
-        if (swScroll.live <= 0.001) {
-          // base pose already equals the frozen scroll pose (input was
-          // locked, layout never shifted) — just release control
-          unlockScroll();
-          swScroll.liveIdx = -1;
-          setLive("off");
-          liveBtnRef.current?.focus();
-        }
+        if (finishingRef.current || swScroll.live > 0.001) return;
+        finishingRef.current = true;
+        swScroll.live = 0;
+        /* scroll handoff: kill any residual Lenis inertia target, put
+           the browser scroll back exactly where it froze, resync
+           ScrollTrigger (update — NOT refresh, layout never changed),
+           then wait two rAF cycles with the scene still frozen before
+           unlocking. Nothing can move during those frames. */
+        scrollBridge.lenis?.scrollTo(savedScrollY.current, {
+          immediate: true,
+          force: true,
+        });
+        window.scrollTo(0, savedScrollY.current);
+        swScroll.progress = frozenProg.current;
+        swScroll.smooth = frozenProg.current;
+        ScrollTrigger.update();
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => {
+            swScroll.frozen = false;
+            swScroll.liveIdx = -1;
+            scrollBridge.lenis?.start();
+            unlockScroll();
+            setLive("off");
+            liveBtnRef.current?.focus();
+          })
+        );
       }, 60);
       return () => window.clearInterval(id);
     }
@@ -312,6 +327,8 @@ export default function SelectedWork() {
       swScroll.liveTarget = 0;
       swScroll.live = 0;
       swScroll.liveIdx = -1;
+      swScroll.frozen = false;
+      scrollBridge.lenis?.start();
     },
     []
   );
@@ -379,6 +396,7 @@ export default function SelectedWork() {
 
     const ctx = gsap.context(() => {
       const glow = root.querySelector<HTMLElement>("[data-sw-glow]");
+      const panel = root.querySelector<HTMLElement>("[data-sw-panel]");
       const strip = root.querySelector<HTMLElement>("[data-sw-countstrip]");
       const progFill = root.querySelector<HTMLElement>("[data-sw-prog]");
       const devices = root.querySelector<HTMLElement>("[data-sw-devices]");
@@ -424,10 +442,13 @@ export default function SelectedWork() {
         const vw = window.innerWidth / 100;
         const smoother = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
         const tr = clamp01((lt - 0.15) / 0.8); // physical travel 15%→95%
-        /* live dive: the companion phone + glow recede on the same clocked
-           curve as the 3D non-live unit — applyVisual is their only alpha
-           writer, so enter and exit reverse along the identical path */
-        const liveDim = 1 - easeIO(clamp01((swScroll.live - 0.05) / 0.4));
+        /* live dive: panel, companion phone + glow recede during the
+           first 20% of the clocked live progress (and return during the
+           final 20% of the exit) — applyVisual is their ONLY alpha
+           writer, so every value is a pure function of swScroll.live and
+           the exit is the mathematical reverse of the entrance */
+        const liveDim = 1 - easeIO(clamp01(swScroll.live / 0.22));
+        if (panel) gsap.set(panel, { autoAlpha: liveDim });
 
         /* ── outgoing pair: long continuous fade (45%→98% of the exit) ── */
         const to = easeIO(tr);
@@ -545,11 +566,17 @@ export default function SelectedWork() {
            is still loading the model) */
         const tick = (_t: number, deltaMS: number) => {
           const dt = Math.min(deltaMS / 1000, 0.05);
-          swScroll.smooth = gsap.utils.interpolate(
-            swScroll.smooth,
-            swScroll.progress,
-            1 - Math.exp(-8 * dt)
-          );
+          /* while live mode owns the scene the damped progress is frozen
+             solid — ScrollTrigger may write `progress` all it wants, the
+             base scene never sees it. applyVisual still runs so the
+             live-derived fades keep updating. */
+          if (!swScroll.frozen) {
+            swScroll.smooth = gsap.utils.interpolate(
+              swScroll.smooth,
+              swScroll.progress,
+              1 - Math.exp(-8 * dt)
+            );
+          }
           applyVisual(swScroll.smooth);
         };
         gsap.ticker.add(tick);

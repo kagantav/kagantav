@@ -53,8 +53,78 @@ function seg(p: number) {
    Cinematic pose keys (world units around the showcase center)
    ════════════════════════════════════════════════ */
 const P_IN0 = { x: -5.1, y: -0.15, z: -1.8, ry: -0.55, rx: -0.05, rz: -0.025, s: 0.79 };
+/** THE canonical settled pose — the single source for "on stage". */
 const P_SHOW = { x: 0, y: 0, z: 0, ry: 0.08, rx: -0.025, rz: 0, s: 1 };
 const P_OUT1 = { x: 5.6, y: 0.1, z: -2.2, ry: 0.55, rx: 0.06, rz: 0.025, s: 0.77 };
+
+export interface UnitPose {
+  x: number;
+  y: number;
+  z: number;
+  ry: number;
+  rx: number;
+  rz: number;
+  s: number;
+  opacity: number;
+  lidT: number;
+  presence: number;
+}
+
+/**
+ * ONE continuous pose function of signed project distance.
+ *
+ *   d = absoluteProjectPosition − projectIndex
+ *   absoluteProjectPosition = smoothGlobalProgress · (N − 1)
+ *
+ *   d ≤ −1   hidden-left pose        (opacity 0)
+ *   −1<d<0   continuous incoming curve
+ *   d = 0    canonical settled pose  (P_SHOW, by construction)
+ *   0<d<1    continuous outgoing curve
+ *   d ≥ 1    hidden-right pose       (opacity 0)
+ *
+ * There is NO separate settled branch: the same formulas that animate the
+ * approach evaluate to exactly P_SHOW at d = 0 (every arc/settle term is
+ * zero at both ends), so no visual-state handoff can ever produce a jump.
+ * A unit's project assignment may only change while |d| ≥ 1 (invisible).
+ */
+function poseFromDistance(d: number): UnitPose {
+  if (d < 0) {
+    /* incoming from stage-left */
+    const lt = clamp01(d + 1);
+    const tr = clamp01((lt - 0.15) / 0.8);
+    const e = easeOut(tr); // monotonic, no overshoot
+    return {
+      x: lerp(P_IN0.x, P_SHOW.x, e),
+      y: lerp(P_IN0.y, P_SHOW.y, e) + 0.22 * bump(e),
+      z: lerp(P_IN0.z, P_SHOW.z, e) - 0.15 * bump(e),
+      ry:
+        lerp(P_IN0.ry, P_SHOW.ry, e) +
+        0.012 * (1 - smoother(clamp01((lt - 0.8) / 0.2))),
+      rx: lerp(P_IN0.rx, P_SHOW.rx, e),
+      rz: lerp(P_IN0.rz, P_SHOW.rz, e),
+      s: lerp(P_IN0.s, P_SHOW.s, e),
+      opacity: smoother(clamp01(tr / 0.34)),
+      lidT: 0.12 + 0.88 * easeOut(clamp01((lt - 0.28) / 0.5)),
+      presence: smoother(clamp01((lt - 0.35) / 0.45)),
+    };
+  }
+  /* settled (d = 0) flowing into the outgoing curve */
+  const lt = clamp01(d);
+  const tr = clamp01((lt - 0.15) / 0.8);
+  const e = easeIO(tr);
+  return {
+    x: lerp(P_SHOW.x, P_OUT1.x, e),
+    y: lerp(P_SHOW.y, P_OUT1.y, e) + 0.18 * bump(e),
+    z: lerp(P_SHOW.z, P_OUT1.z, e) - 0.2 * bump(e),
+    ry: lerp(P_SHOW.ry, P_OUT1.ry, easeIO(clamp01(tr * 1.12))),
+    rx: lerp(P_SHOW.rx, P_OUT1.rx, e),
+    rz: lerp(P_SHOW.rz, P_OUT1.rz, e),
+    s: lerp(P_SHOW.s, P_OUT1.s, e),
+    opacity: 1 - smoother(clamp01((lt - 0.5) / 0.46)),
+    lidT: lt < 0.15 ? 1 : 1 - 0.9 * smoother(clamp01((lt - 0.18) / 0.6)),
+    presence: 1 - smoother(clamp01((lt - 0.35) / 0.45)),
+  };
+}
 
 /* ════════════════════════════════════════════════
    Model rig — per-unit clone with independently fadable materials
@@ -381,81 +451,34 @@ function MacUnit({
     const g = group.current;
     if (!g) return;
 
-    const { k, lt } = seg(swScroll.smooth);
-    const isOut = (k % 2 === 0) === (unit === "A");
+    /* ONE continuous transform source: signed distance from this unit's
+       project to the damped absolute position. No role logic, no
+       incoming→settled handoff — poseFromDistance(0) IS the settled
+       pose, so the approach flows into it with nothing to switch. */
+    const absPos = swScroll.smooth * TRANSITIONS;
+    const d = absPos - projectIdx;
+    const pose = poseFromDistance(d);
+    let { opacity, lidT } = pose;
     const t = state.clock.elapsedTime;
 
-    let x: number, y: number, z: number;
-    let ry: number, rx: number, rz: number, s: number;
-    let opacity: number;
-    let lidT: number; // 0 closed → 1 open
-    let presence: number; // drives rim light + screen brightness
-
-    if (isOut) {
-      /* showcase → rotate away, curve right & back, close, LONG fade.
-         Physical travel spans 15%→95% so motion never stops before the
-         opacity reaches zero. */
-      const tr = clamp01((lt - 0.15) / 0.8);
-      const e = easeIO(tr);
-      x = lerp(P_SHOW.x, P_OUT1.x, e);
-      y = lerp(P_SHOW.y, P_OUT1.y, e) + 0.18 * bump(e);
-      z = lerp(P_SHOW.z, P_OUT1.z, e) - 0.2 * bump(e);
-      ry = lerp(P_SHOW.ry, P_OUT1.ry, easeIO(clamp01(tr * 1.12)));
-      rx = lerp(P_SHOW.rx, P_OUT1.rx, e);
-      rz = lerp(P_SHOW.rz, P_OUT1.rz, e);
-      s = lerp(P_SHOW.s, P_OUT1.s, e);
-      // continuous long fade: 1 until ~45% of the exit, zero by ~98%
-      opacity = 1 - smoother(clamp01((lt - 0.5) / 0.46));
-      lidT = lt < 0.15 ? 1 : 1 - 0.9 * smoother(clamp01((lt - 0.18) / 0.6));
-      presence = 1 - smoother(clamp01((lt - 0.35) / 0.45));
-    } else {
-      /* far left & back, lid ajar → curved arrival that decelerates
-         naturally: no overshoot, only a whisper of settle at the end */
-      const tr = clamp01((lt - 0.15) / 0.8);
-      const e = easeOut(tr); // long power3 tail = visible deceleration
-      x = lerp(P_IN0.x, P_SHOW.x, e);
-      y = lerp(P_IN0.y, P_SHOW.y, e) + 0.22 * bump(e);
-      z = lerp(P_IN0.z, P_SHOW.z, e) - 0.15 * bump(e * 0.8);
-      ry = lerp(P_IN0.ry, P_SHOW.ry, e) + 0.012 * (1 - smoother(clamp01((lt - 0.8) / 0.2)));
-      rx = lerp(P_IN0.rx, P_SHOW.rx, e);
-      rz = lerp(P_IN0.rz, P_SHOW.rz, e);
-      s = lerp(P_IN0.s, P_SHOW.s, e);
-      opacity = smoother(clamp01(tr / 0.34));
-      // lid finishes opening slightly BEFORE the device fully settles
-      lidT = 0.12 + 0.88 * easeOut(clamp01((lt - 0.28) / 0.5));
-      presence = smoother(clamp01((lt - 0.35) / 0.45));
-    }
-
-    /* idle breath — only while present and calm */
-    const calm = isOut ? 1 - clamp01((lt - 0.15) / 0.2) : clamp01((lt - 0.8) / 0.2);
-    const idle = calm * Math.sin(t * 0.55 + phase) * 0.04;
-
-    /* live-mode staging (raw clocked t, pure function → exact reverse):
-       0.05–0.45  everything else melts away
-       0.15–0.60  MacBook slowly straightens, lid finishes opening
-       (the camera travels later — see CameraRig) */
+    /* idle breath — only while present and calm, and NEVER during live
+       mode (the frozen base scene must not drift under the dive) */
+    const calm =
+      d >= 0 ? 1 - clamp01((d - 0.15) / 0.2) : clamp01((d + 0.2) / 0.2);
     const tL = clamp01(swScroll.live);
-    if (tL > 0.001) {
-      const isLive = swScroll.liveIdx === projectIdx;
-      if (isLive) {
-        const mb = easeIO(clamp01((tL - 0.15) / 0.45));
-        x = lerp(x, 0, mb);
-        y = lerp(y, 0, mb);
-        z = lerp(z, 0.35, mb);
-        ry = lerp(ry, 0, mb);
-        rx = lerp(rx, -0.005, mb);
-        rz = lerp(rz, 0, mb);
-        s = lerp(s, 1, mb);
-        lidT = lerp(lidT, 1, mb);
-        opacity = Math.max(opacity, mb);
-      } else {
-        opacity *= 1 - easeIO(clamp01((tL - 0.05) / 0.4));
-      }
+    const liveGate = 1 - clamp01(tL / 0.2);
+    const idle = calm * liveGate * Math.sin(t * 0.55 + phase) * 0.04;
+
+    /* live mode: THE LAPTOP DOES NOT MOVE. The dive is camera-only; the
+       only live effect here is the companion unit receding (a pure
+       function of the clocked live progress → exactly reversible). */
+    if (tL > 0.001 && swScroll.liveIdx !== projectIdx) {
+      opacity *= 1 - easeIO(clamp01(tL / 0.22));
     }
 
-    g.position.set(x, y + idle, z);
-    g.rotation.set(rx, ry, rz);
-    g.scale.setScalar(s);
+    g.position.set(pose.x, pose.y + idle, pose.z);
+    g.rotation.set(pose.rx, pose.ry, pose.rz);
+    g.scale.setScalar(pose.s);
     rig.setOpacity(opacity);
 
     if (rig.lid)
@@ -469,7 +492,8 @@ function MacUnit({
     }
 
     /* warm rim light follows presence */
-    if (rim.current) rim.current.intensity = 3.2 * presence * opacity + 0.15;
+    if (rim.current)
+      rim.current.intensity = 3.2 * pose.presence * opacity + 0.15;
   });
 
   const project = FEATURED_PROJECTS[projectIdx];
@@ -516,17 +540,53 @@ function CameraRig({ reg }: { reg: Registry }) {
     cam: new THREE.Vector3(),
     a: new THREE.Vector3(),
     b: new THREE.Vector3(),
+    aq: new THREE.Quaternion(),
+    bq: new THREE.Quaternion(),
   });
+  /* frozen camera pose captured at live-enter; used for the dev
+     continuity assertion when the exit lands (spec: they must match) */
+  const frozenCam = useRef<{ p: THREE.Vector3; fov: number } | null>(null);
+
+  /* dev boundary assertion: the single pose function must be continuous
+     through d = 0 (incoming t=1 ≡ settled ≡ outgoing t=0) */
+  useEffect(() => {
+    if (
+      process.env.NODE_ENV !== "development" ||
+      typeof window === "undefined" ||
+      !window.location.search.includes("swdebug")
+    )
+      return;
+    const a = poseFromDistance(-1e-6);
+    const b = poseFromDistance(0);
+    const c = poseFromDistance(1e-6);
+    const keys: (keyof UnitPose)[] = [
+      "x", "y", "z", "ry", "rx", "rz", "s", "lidT", "opacity",
+    ];
+    let max = 0;
+    for (const key of keys)
+      max = Math.max(max, Math.abs(a[key] - b[key]), Math.abs(c[key] - b[key]));
+    const fn = max > 1e-4 ? "warn" : "log";
+    console[fn](
+      `[continuity] settled-boundary max pose delta ${max.toExponential(2)} (tolerance 1e-4)`
+    );
+  }, []);
 
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, 0.05);
+    /* capture the frozen camera pose BEFORE anything moves this frame —
+       the exit must land exactly here */
+    if (swScroll.liveTarget === 1 && swScroll.live === 0 && !frozenCam.current)
+      frozenCam.current = {
+        p: camera.position.clone(),
+        fov: (camera as THREE.PerspectiveCamera).fov,
+      };
     // swScroll.smooth is damped by SelectedWork's gsap ticker (single
     // writer). The live dive is a deterministic CLOCK, not a damp:
-    // 2.4s in, 2.2s out — a pure, exactly reversible progress value.
+    // ~2.6s in, ~2.3s out — one pure, exactly reversible progress value.
     if (swScroll.liveTarget === 1 && swScroll.live < 1)
-      swScroll.live = Math.min(1, swScroll.live + dt / 2.4);
+      swScroll.live = Math.min(1, swScroll.live + dt / 2.6);
     else if (swScroll.liveTarget === 0 && swScroll.live > 0)
-      swScroll.live = Math.max(0, swScroll.live - dt / 2.2);
+      swScroll.live = Math.max(0, swScroll.live - dt / 2.3);
 
     const portrait = viewport.aspect < 1.05;
     const { lt } = seg(swScroll.smooth);
@@ -551,13 +611,15 @@ function CameraRig({ reg }: { reg: Registry }) {
     let lz = 0;
     let fov = 34 - 2.6 * b;
 
-    /* live dive: the camera starts travelling only after the MacBook has
-       begun straightening (0.30–0.85 of the clocked live progress) — the
-       viewer feels the dolly through space, and the reverse retreats
-       along exactly the same path */
+    /* live dive — CAMERA ONLY. The MacBook stays frozen at its scroll
+       pose (swScroll.smooth is frozen while live mode owns the scene),
+       so the base camera pose above is static and this whole block is a
+       pure function of the clocked live progress: the camera rotates and
+       dollies toward the screen over 0.15–0.80, and the exit retreats
+       along exactly the same path back to the frozen pose. */
     const tL = clamp01(swScroll.live);
     if (tL > 0.001) {
-      const cb = easeIO(clamp01((tL - 0.3) / 0.55));
+      const cb = easeIO(clamp01((tL - 0.15) / 0.65));
       const handles = Object.values(reg.current);
       const active = handles.find((h) => h.projectIdx === swScroll.liveIdx);
       if (active?.rig.anchor && cb > 0.0001) {
@@ -574,6 +636,26 @@ function CameraRig({ reg }: { reg: Registry }) {
         lz = lerp(lz, v.aPos.z, cb);
         fov = lerp(fov, 30, cb);
       }
+    } else if (frozenCam.current && swScroll.liveTarget === 0) {
+      /* exit landed: assert the camera is numerically back at the frozen
+         pose before scroll control is handed back (dev only) */
+      if (
+        process.env.NODE_ENV === "development" &&
+        typeof window !== "undefined" &&
+        window.location.search.includes("swdebug")
+      ) {
+        const dp = Math.hypot(
+          px - frozenCam.current.p.x,
+          py - frozenCam.current.p.y,
+          pz - frozenCam.current.p.z
+        );
+        const df = Math.abs(fov - frozenCam.current.fov);
+        const fn = dp > 1e-4 || df > 1e-3 ? "warn" : "log";
+        console[fn](
+          `[continuity] live-exit camera delta pos=${dp.toExponential(2)} fov=${df.toExponential(2)}`
+        );
+      }
+      frozenCam.current = null;
     }
 
     camera.position.set(px, py, pz);
@@ -595,26 +677,48 @@ function CameraRig({ reg }: { reg: Registry }) {
     ) {
       const s = snap.current;
       const vel = Math.abs(swScroll.progress - s.prog);
-      if (s.init && vel < 0.004 && swScroll.live === 0) {
+      /* only meaningful when the damped value has CONVERGED — during a
+         legitimate catch-up sweep (anchor jump, fast flick) the scene is
+         supposed to move fast while raw progress sits still */
+      const converged = Math.abs(swScroll.smooth - swScroll.progress) < 0.004;
+      if (
+        s.init &&
+        vel < 0.004 &&
+        converged &&
+        swScroll.live === 0 &&
+        !swScroll.frozen
+      ) {
         const camD = Math.hypot(
           px - s.cam.x,
           py - s.cam.y,
           pz - s.cam.z
         );
-        if (camD > 0.05)
-          console.warn(`[snap] camera moved ${camD.toFixed(3)} in one frame`);
+        if (camD > 0.025)
+          console.warn(`[snap] camera moved ${camD.toFixed(4)} in one frame`);
         (["A", "B"] as const).forEach((u) => {
           const h = reg.current[u];
           if (!h?.group || !h.rig.root.visible) return;
           const prev = u === "A" ? s.a : s.b;
-          const d = h.group.position.distanceTo(prev);
-          if (d > 0.06)
-            console.warn(`[snap] mac ${u} moved ${d.toFixed(3)} in one frame`);
+          const prevQ = u === "A" ? s.aq : s.bq;
+          const dPos = h.group.position.distanceTo(prev);
+          if (dPos > 0.025)
+            console.warn(`[snap] mac ${u} moved ${dPos.toFixed(4)} in one frame`);
+          const dAng = h.group.quaternion.angleTo(prevQ);
+          if (dAng > 0.015)
+            console.warn(
+              `[snap] mac ${u} rotated ${dAng.toFixed(4)} rad in one frame`
+            );
         });
       }
       s.cam.set(px, py, pz);
-      if (reg.current.A?.group) s.a.copy(reg.current.A.group.position);
-      if (reg.current.B?.group) s.b.copy(reg.current.B.group.position);
+      if (reg.current.A?.group) {
+        s.a.copy(reg.current.A.group.position);
+        s.aq.copy(reg.current.A.group.quaternion);
+      }
+      if (reg.current.B?.group) {
+        s.b.copy(reg.current.B.group.position);
+        s.bq.copy(reg.current.B.group.quaternion);
+      }
       s.prog = swScroll.progress;
       s.init = true;
     }
