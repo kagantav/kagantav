@@ -196,14 +196,21 @@ function useMacRig(): MacRig {
       lid.add(anchor);
     }
 
+    /* All materials stay PERMANENTLY transparent — toggling the flag
+       triggers shader recompiles mid-scroll, which reads as a frame
+       hitch/snap at segment boundaries. */
+    for (const m of fadeMats) m.transparent = true;
+
     const setOpacity = (v: number) => {
       const t = clamp01(v);
+      // fully hidden units leave the render list entirely: no depth
+      // punch-through, no frustum cost, safe to recycle
+      root.visible = t > 0.02;
       for (const m of fadeMats) {
         if (m === clearGlass) {
           m.opacity = 0.06 * t;
           continue;
         }
-        m.transparent = t < 0.999;
         m.opacity = t;
       }
     };
@@ -423,23 +430,26 @@ function MacUnit({
     const calm = isOut ? 1 - clamp01((lt - 0.15) / 0.2) : clamp01((lt - 0.8) / 0.2);
     const idle = calm * Math.sin(t * 0.55 + phase) * 0.04;
 
-    /* live-mode: the active unit straightens toward the camera, the
-       other one melts away (CameraRig owns the camera itself) */
-    const L = easeIO(clamp01(swScroll.live));
-    if (L > 0.001) {
+    /* live-mode staging (raw clocked t, pure function → exact reverse):
+       0.05–0.45  everything else melts away
+       0.15–0.60  MacBook slowly straightens, lid finishes opening
+       (the camera travels later — see CameraRig) */
+    const tL = clamp01(swScroll.live);
+    if (tL > 0.001) {
       const isLive = swScroll.liveIdx === projectIdx;
       if (isLive) {
-        x = lerp(x, 0, L);
-        y = lerp(y, 0, L);
-        z = lerp(z, 0.35, L);
-        ry = lerp(ry, 0, L);
-        rx = lerp(rx, -0.005, L);
-        rz = lerp(rz, 0, L);
-        s = lerp(s, 1, L);
-        lidT = lerp(lidT, 1, L);
-        opacity = Math.max(opacity, L);
+        const mb = easeIO(clamp01((tL - 0.15) / 0.45));
+        x = lerp(x, 0, mb);
+        y = lerp(y, 0, mb);
+        z = lerp(z, 0.35, mb);
+        ry = lerp(ry, 0, mb);
+        rx = lerp(rx, -0.005, mb);
+        rz = lerp(rz, 0, mb);
+        s = lerp(s, 1, mb);
+        lidT = lerp(lidT, 1, mb);
+        opacity = Math.max(opacity, mb);
       } else {
-        opacity *= 1 - L;
+        opacity *= 1 - easeIO(clamp01((tL - 0.05) / 0.4));
       }
     }
 
@@ -499,18 +509,24 @@ function CameraRig({ reg }: { reg: Registry }) {
     aDir: new THREE.Vector3(),
     q: new THREE.Quaternion(),
   });
+  /* dev-only frame-to-frame snap detector state */
+  const snap = useRef({
+    init: false,
+    prog: 0,
+    cam: new THREE.Vector3(),
+    a: new THREE.Vector3(),
+    b: new THREE.Vector3(),
+  });
 
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, 0.05);
     // swScroll.smooth is damped by SelectedWork's gsap ticker (single
-    // writer, works even while this canvas is suspended) — only the
-    // live-dive value is damped here.
-    swScroll.live = THREE.MathUtils.damp(
-      swScroll.live,
-      swScroll.liveTarget,
-      swScroll.liveTarget === 1 ? 3.2 : 4.6, // exit pulls back a bit faster
-      dt
-    );
+    // writer). The live dive is a deterministic CLOCK, not a damp:
+    // 2.4s in, 2.2s out — a pure, exactly reversible progress value.
+    if (swScroll.liveTarget === 1 && swScroll.live < 1)
+      swScroll.live = Math.min(1, swScroll.live + dt / 2.4);
+    else if (swScroll.liveTarget === 0 && swScroll.live > 0)
+      swScroll.live = Math.max(0, swScroll.live - dt / 2.2);
 
     const portrait = viewport.aspect < 1.05;
     const { lt } = seg(swScroll.smooth);
@@ -535,24 +551,28 @@ function CameraRig({ reg }: { reg: Registry }) {
     let lz = 0;
     let fov = 34 - 2.6 * b;
 
-    /* live dive: travel into the active display */
-    const L = easeIO(clamp01(swScroll.live));
-    if (L > 0.001) {
+    /* live dive: the camera starts travelling only after the MacBook has
+       begun straightening (0.30–0.85 of the clocked live progress) — the
+       viewer feels the dolly through space, and the reverse retreats
+       along exactly the same path */
+    const tL = clamp01(swScroll.live);
+    if (tL > 0.001) {
+      const cb = easeIO(clamp01((tL - 0.3) / 0.55));
       const handles = Object.values(reg.current);
       const active = handles.find((h) => h.projectIdx === swScroll.liveIdx);
-      if (active?.rig.anchor) {
+      if (active?.rig.anchor && cb > 0.0001) {
         const v = tmp.current;
         active.rig.anchor.getWorldPosition(v.aPos);
         active.rig.anchor.getWorldQuaternion(v.q);
         v.aDir.set(0, 0, 1).applyQuaternion(v.q).normalize();
         const dist = portrait ? 2.1 : 1.55;
-        px = lerp(px, v.aPos.x + v.aDir.x * dist, L);
-        py = lerp(py, v.aPos.y + v.aDir.y * dist, L);
-        pz = lerp(pz, v.aPos.z + v.aDir.z * dist, L);
-        lx = lerp(lx, v.aPos.x, L);
-        ly = lerp(ly, v.aPos.y, L);
-        lz = lerp(lz, v.aPos.z, L);
-        fov = lerp(fov, 30, L);
+        px = lerp(px, v.aPos.x + v.aDir.x * dist, cb);
+        py = lerp(py, v.aPos.y + v.aDir.y * dist, cb);
+        pz = lerp(pz, v.aPos.z + v.aDir.z * dist, cb);
+        lx = lerp(lx, v.aPos.x, cb);
+        ly = lerp(ly, v.aPos.y, cb);
+        lz = lerp(lz, v.aPos.z, cb);
+        fov = lerp(fov, 30, cb);
       }
     }
 
@@ -565,6 +585,39 @@ function CameraRig({ reg }: { reg: Registry }) {
     }
     // NOTE: no positive useFrame priority here — that would switch R3F
     // into manual-render mode and blank the whole canvas.
+
+    /* dev snap detector (?swdebug): flags any single-frame jump while
+       scroll velocity is low — used to hunt boundary discontinuities */
+    if (
+      process.env.NODE_ENV === "development" &&
+      typeof window !== "undefined" &&
+      window.location.search.includes("swdebug")
+    ) {
+      const s = snap.current;
+      const vel = Math.abs(swScroll.progress - s.prog);
+      if (s.init && vel < 0.004 && swScroll.live === 0) {
+        const camD = Math.hypot(
+          px - s.cam.x,
+          py - s.cam.y,
+          pz - s.cam.z
+        );
+        if (camD > 0.05)
+          console.warn(`[snap] camera moved ${camD.toFixed(3)} in one frame`);
+        (["A", "B"] as const).forEach((u) => {
+          const h = reg.current[u];
+          if (!h?.group || !h.rig.root.visible) return;
+          const prev = u === "A" ? s.a : s.b;
+          const d = h.group.position.distanceTo(prev);
+          if (d > 0.06)
+            console.warn(`[snap] mac ${u} moved ${d.toFixed(3)} in one frame`);
+        });
+      }
+      s.cam.set(px, py, pz);
+      if (reg.current.A?.group) s.a.copy(reg.current.A.group.position);
+      if (reg.current.B?.group) s.b.copy(reg.current.B.group.position);
+      s.prog = swScroll.progress;
+      s.init = true;
+    }
   });
 
   return null;

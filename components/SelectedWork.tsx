@@ -197,6 +197,38 @@ export default function SelectedWork() {
       ? proj.desktopMedia.src
       : proj.liveUrl;
 
+  /* Scroll lock WITHOUT layout shift: `overflow: hidden` removes the
+     scrollbar, which resizes the canvas and shifts the whole stage —
+     that was the visible "teleport left" after exiting live mode.
+     Instead we swallow every scroll input while leaving layout alone. */
+  const scrollLockRef = useRef<(() => void) | null>(null);
+  const lockScroll = () => {
+    if (scrollLockRef.current) return;
+    const block = (e: Event) => e.preventDefault();
+    const keys = new Set([
+      "ArrowUp",
+      "ArrowDown",
+      "PageUp",
+      "PageDown",
+      "Home",
+      "End",
+      " ",
+    ]);
+    const blockKeys = (e: KeyboardEvent) => {
+      if (keys.has(e.key)) e.preventDefault();
+    };
+    window.addEventListener("wheel", block, { passive: false });
+    window.addEventListener("touchmove", block, { passive: false });
+    window.addEventListener("keydown", blockKeys);
+    scrollLockRef.current = () => {
+      window.removeEventListener("wheel", block);
+      window.removeEventListener("touchmove", block);
+      window.removeEventListener("keydown", blockKeys);
+      scrollLockRef.current = null;
+    };
+  };
+  const unlockScroll = () => scrollLockRef.current?.();
+
   const enterLive = (idx: number) => {
     if (live !== "off" || settled !== idx) return;
     const src = liveSrcOf(FEATURED_PROJECTS[idx]);
@@ -204,13 +236,17 @@ export default function SelectedWork() {
     savedScrollY.current = window.scrollY;
     swScroll.liveIdx = idx;
     swScroll.liveTarget = 1;
-    document.documentElement.style.overflow = "hidden";
+    lockScroll();
     setFrameState("loading");
     setLive("enter");
-    gsap.to("[data-sw-panel], [data-sw-phone], [data-sw-glow]", {
+    // Panel copy melts away gently. The phone + glow are NOT tweened —
+    // applyVisual writes their alpha every ticker frame, so their live
+    // fade is derived from swScroll.live inside applyVisual itself
+    // (single writer, exactly reversible on exit).
+    gsap.to("[data-sw-panel]", {
       autoAlpha: 0,
-      duration: 0.5,
-      ease: "power2.in",
+      duration: 0.9,
+      ease: "power2.inOut",
     });
   };
 
@@ -223,32 +259,40 @@ export default function SelectedWork() {
     }, 240);
   };
 
-  /* enter: flip to "on" once the camera has reached the display;
-     exit: restore everything once the camera is back out */
+  /* enter: hand off to the DOM iframe once the display fills the view;
+     exit: pure reverse of the same clocked progress — the panel fades
+     back during the final 25%, scroll unlocks only at exactly 0 */
+  const restoredRef = useRef(false);
   useEffect(() => {
     if (live === "enter") {
       const id = window.setInterval(() => {
-        if (swScroll.live > 0.88) setLive("on");
+        if (swScroll.live > 0.8) setLive("on");
       }, 60);
       return () => window.clearInterval(id);
     }
     if (live === "exit") {
+      restoredRef.current = false;
       const id = window.setInterval(() => {
-        if (swScroll.live < 0.08) {
-          document.documentElement.style.overflow = "";
-          window.scrollTo(0, savedScrollY.current);
-          gsap.to("[data-sw-panel], [data-sw-phone], [data-sw-glow]", {
+        if (!restoredRef.current && swScroll.live < 0.3) {
+          restoredRef.current = true;
+          gsap.to("[data-sw-panel]", {
             autoAlpha: 1,
-            duration: 0.55,
+            duration: 0.7,
             ease: "power2.out",
           });
+        }
+        if (swScroll.live <= 0.001) {
+          // base pose already equals the frozen scroll pose (input was
+          // locked, layout never shifted) — just release control
+          unlockScroll();
           swScroll.liveIdx = -1;
           setLive("off");
           liveBtnRef.current?.focus();
         }
-      }, 80);
+      }, 60);
       return () => window.clearInterval(id);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [live]);
 
   /* Escape closes live mode; safety-restore scroll lock on unmount */
@@ -264,8 +308,9 @@ export default function SelectedWork() {
 
   useEffect(
     () => () => {
-      document.documentElement.style.overflow = "";
+      scrollLockRef.current?.();
       swScroll.liveTarget = 0;
+      swScroll.live = 0;
       swScroll.liveIdx = -1;
     },
     []
@@ -379,6 +424,10 @@ export default function SelectedWork() {
         const vw = window.innerWidth / 100;
         const smoother = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
         const tr = clamp01((lt - 0.15) / 0.8); // physical travel 15%→95%
+        /* live dive: the companion phone + glow recede on the same clocked
+           curve as the 3D non-live unit — applyVisual is their only alpha
+           writer, so enter and exit reverse along the identical path */
+        const liveDim = 1 - easeIO(clamp01((swScroll.live - 0.05) / 0.4));
 
         /* ── outgoing pair: long continuous fade (45%→98% of the exit) ── */
         const to = easeIO(tr);
@@ -401,7 +450,7 @@ export default function SelectedWork() {
           rotationY: 9 * to,
           rotationZ: 3.5 * to,
           scale: 1 + 0.09 * bump(to),
-          autoAlpha: 1 - smoother(clamp01((lt - 0.46) / 0.42)),
+          autoAlpha: (1 - smoother(clamp01((lt - 0.46) / 0.42))) * liveDim,
         });
 
         /* ── incoming: sweeps in from stage-left, straightens, settles ── */
@@ -427,7 +476,7 @@ export default function SelectedWork() {
           rotationY: -10 * (1 - phE),
           rotationZ: -3 * (1 - phE),
           scale: 1 + 0.05 * (1 - phE),
-          autoAlpha: clamp01(ph / 0.3),
+          autoAlpha: clamp01(ph / 0.3) * liveDim,
         });
 
         /* ── glow hands off from the outgoing pair to the incoming ── */
@@ -440,7 +489,10 @@ export default function SelectedWork() {
               FEATURED_PROJECTS[Math.min(kk + 1, N - 1)].accentColor
             )(mixT)
           );
-          gsap.set(glow, { x: -12 * vw * bump(to), opacity: 1 - 0.25 * bump(to) });
+          gsap.set(glow, {
+            x: -12 * vw * bump(to),
+            opacity: (1 - 0.25 * bump(to)) * liveDim,
+          });
         }
 
         /* ── counter rolls vertically: 01 exits up, 02 enters from below ── */
@@ -496,7 +548,7 @@ export default function SelectedWork() {
           swScroll.smooth = gsap.utils.interpolate(
             swScroll.smooth,
             swScroll.progress,
-            1 - Math.exp(-6 * dt)
+            1 - Math.exp(-8 * dt)
           );
           applyVisual(swScroll.smooth);
         };
