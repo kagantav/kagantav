@@ -622,7 +622,10 @@
   box-shadow:
     0 0 0 100vmax rgba(2, 1, 0, 0.97),
     0 0 80px rgba(216, 169, 79, 0.1);
-  opacity: 0;
+  /* NOT 0: keeps the pre-loaded iframe layer composited at all times —
+     rasterizing it from scratch exactly at the enter handoff caused a
+     one-frame flash + hitch on some GPUs */
+  opacity: 0.001;
   transition: opacity 0.55s ease;
   pointer-events: none;
 }

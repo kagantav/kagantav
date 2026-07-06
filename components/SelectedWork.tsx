@@ -17,6 +17,7 @@ import {
 } from "./projects";
 import styles from "./SelectedWork.module.css";
 import MacBook3D from "./MacBook3D";
+import { invalidate } from "@react-three/fiber";
 import { swScroll } from "./swScrollBus";
 import { scrollBridge } from "./scrollBridge";
 
@@ -30,7 +31,7 @@ const TRANSITIONS = N - 1;
 /** bumped with every motion-fix round — printed to the console and shown
  *  in the ?swdebug HUD so there is never any doubt WHICH code is running
  *  in the browser being tested */
-const BUILD_TAG = "r5-stallproof-06.07";
+const BUILD_TAG = "r6-gpupace-06.07";
 const pad = (n: number) => String(n + 1).padStart(2, "0");
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
@@ -637,6 +638,17 @@ export default function SelectedWork() {
         /* single damped-progress writer: absorbs uneven wheel input and
            keeps DOM + 3D perfectly in sync (runs even while the canvas
            is still loading the model) */
+        /* only render the 3D scene while the section is anywhere near
+           the viewport — an off-screen WebGL loop is pure GPU waste */
+        const visRef = { current: true };
+        const io = new IntersectionObserver(
+          ([e]) => {
+            visRef.current = e.isIntersecting;
+          },
+          { rootMargin: "30% 0px" }
+        );
+        io.observe(root);
+
         const tick = (_t: number, deltaMS: number) => {
           /* cap at two 60fps frames: after a main-thread stall the damp
              glides on from where it froze instead of closing the gap in
@@ -654,6 +666,8 @@ export default function SelectedWork() {
             );
           }
           applyVisual(swScroll.smooth);
+          /* drive the demand-mode 3D canvas at the (capped) ticker rate */
+          if (visRef.current) invalidate();
         };
         gsap.ticker.add(tick);
         applyVisual(0);
@@ -696,7 +710,10 @@ export default function SelectedWork() {
           },
         });
 
-        return () => gsap.ticker.remove(tick);
+        return () => {
+          gsap.ticker.remove(tick);
+          io.disconnect();
+        };
       });
 
       // pointer parallax on the float wrappers (cursor devices only)

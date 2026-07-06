@@ -803,6 +803,11 @@ export default function MacBook3D({
   return (
     <Canvas
       className={styles.macCanvas}
+      /* demand-driven: SelectedWork's ticker invalidates at a capped,
+         even rate — on 144/240Hz monitors an uncapped loop overwhelms
+         the GPU (shadow pass + PBR at native refresh) and the resulting
+         submit stalls read as scroll micro-stutter */
+      frameloop="demand"
       dpr={[1, 1.5]}
       gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
       camera={{ fov: 34, near: 0.1, far: 60, position: [0.25, 0.05, 7.4] }}

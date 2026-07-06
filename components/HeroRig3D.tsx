@@ -716,9 +716,26 @@ export default function HeroRig3D() {
     };
   }, []);
 
+  /* PERFORMANCE: this canvas kept rendering at full refresh rate even
+     while the hero chapter was scrolled far out of view — on high-Hz
+     monitors that competed with the Selected Work scene for the GPU and
+     caused visible micro-stutter there. Freeze the loop off-screen. */
+  const [loop, setLoop] = useState<"always" | "never">("always");
+  useEffect(() => {
+    const scene = document.getElementById("home");
+    if (!scene) return;
+    const io = new IntersectionObserver(
+      ([e]) => setLoop(e.isIntersecting ? "always" : "never"),
+      { rootMargin: "25% 0px" }
+    );
+    io.observe(scene);
+    return () => io.disconnect();
+  }, []);
+
   return (
     <Canvas
       flat
+      frameloop={loop}
       dpr={[1, 1.75]}
       gl={{
         antialias: true,
