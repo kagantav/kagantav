@@ -372,8 +372,12 @@ function makePlaceholderTexture(project: FeaturedProject, idx: number) {
    sticker. The actual display opening is an inset of that glass: the
    glossy-black panel underneath shows through the remaining ring as a
    real bezel. Shared by the 3D plane AND the DOM overlay quad. */
-export const SCREEN_INSET = 0.93;
+export const SCREEN_INSET = 0.96;
 const SCREEN_Y_BIAS = 0; // × screen height, + = up
+/** macOS menu bar + Safari toolbar height as a fraction of the screen
+ *  (40px + 62px of a 1040px-tall source — keep in sync with the DOM
+ *  overlay chrome in SelectedWork.module.css) */
+export const CHROME_FRAC = 102 / 1040;
 
 /* Rounded-corner alpha mask for the display: the MacBook's screen has
    rounded top corners, and a rectangular texture pokes past them on
@@ -396,6 +400,143 @@ function getScreenMask() {
   g.fill();
   screenMask = new THREE.CanvasTexture(c);
   return screenMask;
+}
+
+/* partial masks for the split screen: the chrome strip owns the top
+   corners, the site viewport owns the bottom corners */
+const partialMasks = new Map<string, THREE.CanvasTexture>();
+function getPartialMask(which: "top" | "bottom") {
+  let t = partialMasks.get(which);
+  if (t) return t;
+  const W = 512;
+  /* real proportions: full screen 1040 tall, chrome 102, viewport 938;
+     corner radius 40px of real scale */
+  const H = which === "top" ? Math.round((512 * 102) / 1600) : Math.round((512 * 938) / 1600);
+  const r = Math.round((40 / 1600) * 512);
+  const c = document.createElement("canvas");
+  c.width = W;
+  c.height = H;
+  const g = c.getContext("2d")!;
+  g.fillStyle = "#000";
+  g.fillRect(0, 0, W, H);
+  g.fillStyle = "#fff";
+  g.beginPath();
+  g.roundRect(0, 0, W, H, which === "top" ? [r, r, 0, 0] : [0, 0, r, r]);
+  g.fill();
+  t = new THREE.CanvasTexture(c);
+  partialMasks.set(which, t);
+  return t;
+}
+
+/* macOS + Safari chrome for the 3D screen texture — the same design as
+   the DOM overlay's CSS chrome, drawn to canvas so the menu/toolbar are
+   visible WHILE THE LAPTOP TRAVELS too. Cached per hostname. */
+const chromeCache = new Map<string, THREE.CanvasTexture>();
+function getChromeTexture(host: string) {
+  let t = chromeCache.get(host);
+  if (t) return t;
+  const W = 1600;
+  const H = 102;
+  const c = document.createElement("canvas");
+  c.width = W;
+  c.height = H;
+  const g = c.getContext("2d")!;
+
+  /* menu bar */
+  g.fillStyle = "#f4f2ef";
+  g.fillRect(0, 0, W, 40);
+  g.fillStyle = "rgba(0,0,0,0.08)";
+  g.fillRect(0, 39, W, 1);
+  g.fillStyle = "#1d1d1f";
+  /* apple silhouette (simplified) */
+  g.beginPath();
+  g.arc(36, 22, 8, 0, Math.PI * 2);
+  g.fill();
+  g.beginPath();
+  g.ellipse(40, 11, 4, 2.6, -0.6, 0, Math.PI * 2);
+  g.fill();
+  g.font = "700 17px Arial";
+  g.fillText("Safari", 58, 27);
+  g.font = "500 16px Arial";
+  const items = ["File", "Edit", "View", "History", "Bookmarks", "Window", "Help"];
+  let x = 128;
+  for (const it of items) {
+    g.fillText(it, x, 27);
+    x += g.measureText(it).width + 24;
+  }
+  /* right cluster */
+  g.textAlign = "right";
+  g.fillText("Paz 14:32", W - 26, 27);
+  g.fillRect(W - 148, 15, 24, 12);
+  g.fillRect(W - 122, 18, 3, 6);
+  g.textAlign = "left";
+  /* notch */
+  g.fillStyle = "#000";
+  g.beginPath();
+  g.roundRect(W / 2 - 98, 0, 196, 30, [0, 0, 14, 14]);
+  g.fill();
+
+  /* safari toolbar */
+  g.fillStyle = "#ece9e4";
+  g.fillRect(0, 40, W, 62);
+  g.fillStyle = "rgba(0,0,0,0.12)";
+  g.fillRect(0, 101, W, 1);
+  const dots: [string, number][] = [["#ff5f57", 40], ["#febc2e", 70], ["#28c840", 100]];
+  for (const [col, dx] of dots) {
+    g.fillStyle = col;
+    g.beginPath();
+    g.arc(dx, 71, 9, 0, Math.PI * 2);
+    g.fill();
+  }
+  /* back / forward arrows */
+  g.strokeStyle = "#4a4a4d";
+  g.lineWidth = 2.4;
+  g.lineCap = "round";
+  g.lineJoin = "round";
+  g.beginPath();
+  g.moveTo(152, 62);
+  g.lineTo(142, 71);
+  g.lineTo(152, 80);
+  g.stroke();
+  g.globalAlpha = 0.35;
+  g.beginPath();
+  g.moveTo(180, 62);
+  g.lineTo(190, 71);
+  g.lineTo(180, 80);
+  g.stroke();
+  g.globalAlpha = 1;
+  /* url pill */
+  const pw = 640;
+  g.fillStyle = "#ffffff";
+  g.beginPath();
+  g.roundRect(W / 2 - pw / 2, 51, pw, 40, 11);
+  g.fill();
+  g.strokeStyle = "rgba(0,0,0,0.07)";
+  g.lineWidth = 1.5;
+  g.stroke();
+  g.fillStyle = "#333";
+  g.font = "500 17px Arial";
+  g.textAlign = "center";
+  const label = "  " + host;
+  g.fillText(label, W / 2 + 6, 77);
+  /* padlock */
+  const lockX = W / 2 - g.measureText(label).width / 2 - 6;
+  g.fillStyle = "#7a7a7e";
+  g.beginPath();
+  g.roundRect(lockX - 12, 68, 12, 9, 2);
+  g.fill();
+  g.strokeStyle = "#7a7a7e";
+  g.lineWidth = 1.8;
+  g.beginPath();
+  g.arc(lockX - 6, 68, 3.6, Math.PI, 0);
+  g.stroke();
+  g.textAlign = "left";
+
+  t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8;
+  chromeCache.set(host, t);
+  return t;
 }
 
 /* Glass overlay — subtle edge vignette + a faint diagonal sheen, baked
@@ -459,6 +600,7 @@ function ScreenPlane({
   settled,
   matRef,
   glassRef,
+  chromeRef,
 }: {
   rig: MacRig;
   project: FeaturedProject;
@@ -466,13 +608,33 @@ function ScreenPlane({
   settled: boolean;
   matRef: MutableRefObject<THREE.MeshBasicMaterial | null>;
   glassRef: MutableRefObject<THREE.MeshBasicMaterial | null>;
+  chromeRef: MutableRefObject<THREE.MeshBasicMaterial | null>;
 }) {
+  const hasRealMedia = !!project.desktopMedia.src;
+  const host = useMemo(() => {
+    try {
+      return project.liveUrl
+        ? new URL(project.liveUrl).hostname.replace(/^www\./, "")
+        : "localhost";
+    } catch {
+      return "localhost";
+    }
+  }, [project]);
+
   const tex = useMemo(() => {
     const m = project.desktopMedia;
+    /* real captures show only the site BELOW the chrome strip — crop to
+       the top-anchored viewport portion, exactly like the DOM overlay's
+       object-fit: cover / top */
+    const cropToViewport = (t: THREE.Texture) => {
+      t.repeat.set(1, 1 - CHROME_FRAC);
+      t.offset.set(0, CHROME_FRAC);
+      return t;
+    };
     if (m.type === "image" && m.src) {
       const t = new THREE.TextureLoader().load(m.src);
       t.colorSpace = THREE.SRGBColorSpace;
-      return t;
+      return cropToViewport(t);
     }
     if (m.type === "video" && m.src) {
       const v = document.createElement("video");
@@ -484,7 +646,7 @@ function ScreenPlane({
       const t = new THREE.VideoTexture(v);
       t.colorSpace = THREE.SRGBColorSpace;
       (t as THREE.VideoTexture & { __video?: HTMLVideoElement }).__video = v;
-      return t;
+      return cropToViewport(t);
     }
     return getPlaceholderTexture(project, idx);
   }, [project, idx]);
@@ -501,20 +663,54 @@ function ScreenPlane({
   const w = rig.screenWorld.w * SCREEN_INSET;
   const h = rig.screenWorld.h * SCREEN_INSET;
   const yOff = rig.screenWorld.h * SCREEN_Y_BIAS;
+  const chrH = h * CHROME_FRAC;
+  const vidH = h - chrH;
+  const chrY = yOff + (h - chrH) / 2;
+  const vidY = yOff - chrH / 2;
 
   return createPortal(
     <>
-      <mesh position={[0, yOff, 0.0006]}>
-        <planeGeometry args={[w, h]} />
-        <meshBasicMaterial
-          ref={matRef}
-          map={tex}
-          alphaMap={getScreenMask()}
-          transparent
-          opacity={0}
-          toneMapped={false}
-        />
-      </mesh>
+      {hasRealMedia ? (
+        <>
+          {/* site viewport (below the chrome) */}
+          <mesh position={[0, vidY, 0.0006]}>
+            <planeGeometry args={[w, vidH]} />
+            <meshBasicMaterial
+              ref={matRef}
+              map={tex}
+              alphaMap={getPartialMask("bottom")}
+              transparent
+              opacity={0}
+              toneMapped={false}
+            />
+          </mesh>
+          {/* macOS + Safari chrome strip — visible during transit too */}
+          <mesh position={[0, chrY, 0.00065]}>
+            <planeGeometry args={[w, chrH]} />
+            <meshBasicMaterial
+              ref={chromeRef}
+              map={getChromeTexture(host)}
+              alphaMap={getPartialMask("top")}
+              transparent
+              opacity={0}
+              toneMapped={false}
+            />
+          </mesh>
+        </>
+      ) : (
+        /* placeholder projects draw their own faux chrome */
+        <mesh position={[0, yOff, 0.0006]}>
+          <planeGeometry args={[w, h]} />
+          <meshBasicMaterial
+            ref={matRef}
+            map={tex}
+            alphaMap={getScreenMask()}
+            transparent
+            opacity={0}
+            toneMapped={false}
+          />
+        </mesh>
+      )}
       {/* glass layer: vignette + sheen riding just above the content */}
       <mesh position={[0, yOff, 0.0012]}>
         <planeGeometry args={[w, h]} />
@@ -563,6 +759,7 @@ function MacUnit({
   const rim = useRef<THREE.PointLight>(null);
   const screenMat = useRef<THREE.MeshBasicMaterial>(null);
   const glassMat = useRef<THREE.MeshBasicMaterial>(null);
+  const chromeMat = useRef<THREE.MeshBasicMaterial>(null);
   const phase = unit === "A" ? 0 : 2.4;
 
   useEffect(() => {
@@ -612,6 +809,7 @@ function MacUnit({
       const on = smooth(clamp01((lidT - 0.72) / 0.26));
       screenMat.current.opacity = on * opacity;
       if (glassMat.current) glassMat.current.opacity = on * opacity;
+      if (chromeMat.current) chromeMat.current.opacity = on * opacity;
     }
 
     /* warm rim light follows presence */
@@ -640,6 +838,7 @@ function MacUnit({
         settled={settledIdx === projectIdx}
         matRef={screenMat}
         glassRef={glassMat}
+        chromeRef={chromeMat}
       />
     </group>
   );
