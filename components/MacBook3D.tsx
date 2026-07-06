@@ -690,9 +690,9 @@ function CameraRig({ reg }: { reg: Registry }) {
     /* base + transition choreography: drift toward the incoming side,
        dolly in around the midpoint, look-at sweeps out → in → center */
     let px = (portrait ? 0 : 0.25) - 0.27 * amp * Math.sin(Math.PI * Math.min(phase * 1.12, 1));
-    let py = (portrait ? -0.4 : 0.05) + 0.08 * amp * b;
-    let pz = (portrait ? 7.9 : 7.4) - 0.32 * amp * b;
-    const lookBase = portrait ? -0.32 : 0.08;
+    let py = (portrait ? 0.6 : 0.05) + 0.08 * amp * b;
+    let pz = (portrait ? 9.2 : 7.4) - 0.32 * amp * b;
+    const lookBase = portrait ? -0.68 : 0.08;
     /* look-at sweep: briefly toward the departing screen, then across to
        the incoming one, back to center. Both terms are ZERO at phase 0
        and 1, so segment boundaries are perfectly continuous. */
@@ -800,8 +800,8 @@ function StageRoot({ children }: { children: React.ReactNode }) {
   const portrait = viewport.aspect < 1.05;
   return (
     <group
-      position={portrait ? [0, 0.78, 0] : [-viewport.width * 0.16, -0.95, 0]}
-      scale={portrait ? 0.5 : 1}
+      position={portrait ? [0, -0.1, 0] : [-viewport.width * 0.16, -0.95, 0]}
+      scale={portrait ? 0.62 : 1}
     >
       {children}
     </group>
