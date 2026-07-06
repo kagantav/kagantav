@@ -91,7 +91,7 @@ function quadMatrix3d(
 /** bumped with every motion-fix round — printed to the console and shown
  *  in the ?swdebug HUD so there is never any doubt WHICH code is running
  *  in the browser being tested */
-const BUILD_TAG = "r20-desklayout-06.07";
+const BUILD_TAG = "r21-stagger-06.07";
 const pad = (n: number) => String(n + 1).padStart(2, "0");
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
@@ -599,7 +599,10 @@ export default function SelectedWork() {
 
         const vw = window.innerWidth / 100;
         const smoother = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
-        const tr = clamp01((lt - 0.15) / 0.8); // physical travel 15%→95%
+        /* staggered: outgoing owns the first half, incoming the second
+           (windows mirror poseFromDistance exactly) */
+        const trOut = clamp01((lt - 0.06) / 0.5);
+        const trIn = clamp01((lt - 0.42) / 0.48);
         /* live dive: panel, companion phone + glow recede during the
            first 20% of the clocked live progress (and return during the
            final 20% of the exit) — applyVisual is their ONLY alpha
@@ -628,12 +631,12 @@ export default function SelectedWork() {
           }
         }
 
-        /* ── outgoing pair: long continuous fade (45%→98% of the exit).
+        /* ── outgoing pair: leaves and fully fades in the FIRST half.
            NOTE: no DOM blur — animating a CSS filter re-rasterizes the
            layer every frame for an element that is already ~invisible
            at that point, and it visibly cost frames on mid GPUs. ── */
-        const to = easeIO(tr);
-        const outFade = 1 - smoother(clamp01((lt - 0.5) / 0.46));
+        const to = easeIO(trOut);
+        const outFade = 1 - smoother(clamp01((lt - 0.22) / 0.3));
         gsap.set(outPair, {
           x: 42 * vw * to,
           z: -150 * to,
@@ -643,19 +646,19 @@ export default function SelectedWork() {
           autoAlpha: outFade,
         });
         /* outgoing iPhone: swells toward the camera, arcs right, tilts
-           away and fades slightly BEFORE its MacBook */
+           away and dies together with its MacBook's display */
         gsap.set(outPhone, {
           x: 9 * vw * to,
           y: -38 * bump(to),
           rotationY: 9 * to,
           rotationZ: 3.5 * to,
           scale: 1 + 0.09 * bump(to),
-          autoAlpha: (1 - smoother(clamp01((lt - 0.46) / 0.42))) * liveDim,
+          autoAlpha: (1 - smoother(clamp01((lt - 0.2) / 0.28))) * liveDim,
         });
 
-        /* ── incoming: sweeps in from stage-left, straightens, settles ── */
-        const ti2 = easeOut(tr);
-        const inFade = clamp01(tr / 0.32);
+        /* ── incoming: enters from stage-left in the SECOND half ── */
+        const ti2 = easeOut(trIn);
+        const inFade = clamp01(trIn / 0.3);
         gsap.set(inPair, {
           x: -44 * vw * (1 - ti2),
           y: 20 * (1 - ti2),
@@ -667,7 +670,7 @@ export default function SelectedWork() {
         });
         /* incoming iPhone: farther left, stronger tilt, shallow arc around
            the MacBook's front edge, arrives after the MacBook */
-        const ph = clamp01((tr - 0.16) / 0.84);
+        const ph = clamp01((trIn - 0.12) / 0.88);
         const phE = easeOut(ph);
         gsap.set(inPhone, {
           x: -12 * vw * (1 - phE),

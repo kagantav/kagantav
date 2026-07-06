@@ -90,10 +90,14 @@ export interface UnitPose {
  * A unit's project assignment may only change while |d| ≥ 1 (invisible).
  */
 function poseFromDistance(d: number): UnitPose {
+  /* STAGGERED choreography: the outgoing unit leaves in the FIRST half
+     of the transition and is fully gone by ~52%; the incoming unit
+     enters in the SECOND half (travel 42% → 90%). They never share the
+     stage at meaningful opacity — no more mid-air collision. */
   if (d < 0) {
-    /* incoming from stage-left */
+    /* incoming from stage-left — second half of the transition */
     const lt = clamp01(d + 1);
-    const tr = clamp01((lt - 0.15) / 0.8);
+    const tr = clamp01((lt - 0.42) / 0.48);
     const e = easeOut(tr); // monotonic, no overshoot
     return {
       x: lerp(P_IN0.x, P_SHOW.x, e),
@@ -105,14 +109,14 @@ function poseFromDistance(d: number): UnitPose {
       rx: lerp(P_IN0.rx, P_SHOW.rx, e),
       rz: lerp(P_IN0.rz, P_SHOW.rz, e),
       s: lerp(P_IN0.s, P_SHOW.s, e),
-      opacity: smoother(clamp01(tr / 0.34)),
-      lidT: 0.12 + 0.88 * easeOut(clamp01((lt - 0.28) / 0.5)),
-      presence: smoother(clamp01((lt - 0.35) / 0.45)),
+      opacity: smoother(clamp01(tr / 0.3)),
+      lidT: 0.12 + 0.88 * easeOut(clamp01((lt - 0.52) / 0.34)),
+      presence: smoother(clamp01((lt - 0.52) / 0.34)),
     };
   }
-  /* settled (d = 0) flowing into the outgoing curve */
+  /* settled (d = 0) flowing into the outgoing curve — first half */
   const lt = clamp01(d);
-  const tr = clamp01((lt - 0.15) / 0.8);
+  const tr = clamp01((lt - 0.06) / 0.5);
   const e = easeIO(tr);
   return {
     x: lerp(P_SHOW.x, P_OUT1.x, e),
@@ -122,12 +126,10 @@ function poseFromDistance(d: number): UnitPose {
     rx: lerp(P_SHOW.rx, P_OUT1.rx, e),
     rz: lerp(P_SHOW.rz, P_OUT1.rz, e),
     s: lerp(P_SHOW.s, P_OUT1.s, e),
-    opacity: 1 - smoother(clamp01((lt - 0.5) / 0.46)),
-    /* lid starts closing LATE so the screen content lives as long as
-       the phone's (the early close used to kill the display at ~35%
-       of the exit while the phone stayed lit to ~88%) */
-    lidT: lt < 0.4 ? 1 : 1 - 0.9 * smoother(clamp01((lt - 0.4) / 0.5)),
-    presence: 1 - smoother(clamp01((lt - 0.35) / 0.45)),
+    opacity: 1 - smoother(clamp01((lt - 0.22) / 0.3)),
+    /* lid closes during the (short) exit while the screen still lives */
+    lidT: lt < 0.14 ? 1 : 1 - 0.9 * smoother(clamp01((lt - 0.14) / 0.34)),
+    presence: 1 - smoother(clamp01((lt - 0.12) / 0.3)),
   };
 }
 
@@ -882,7 +884,7 @@ function MacUnit({
          the lid-based curve still owns the incoming open-up moment.
          Continuous at d = 0: both branches evaluate to 1. */
       const outHold =
-        d > 0 ? 1 - smoother(clamp01((d - 0.46) / 0.42)) : 0;
+        d > 0 ? 1 - smoother(clamp01((d - 0.2) / 0.28)) : 0;
       const on = Math.max(lidOn, outHold);
       screenMat.current.opacity = on * opacity;
       if (glassMat.current) glassMat.current.opacity = on * opacity;
