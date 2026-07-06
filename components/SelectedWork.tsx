@@ -31,7 +31,7 @@ const TRANSITIONS = N - 1;
 /** bumped with every motion-fix round — printed to the console and shown
  *  in the ?swdebug HUD so there is never any doubt WHICH code is running
  *  in the browser being tested */
-const BUILD_TAG = "r7-lightpass-06.07";
+const BUILD_TAG = "r8-divelite-06.07";
 const pad = (n: number) => String(n + 1).padStart(2, "0");
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
@@ -669,9 +669,15 @@ export default function SelectedWork() {
           applyVisual(swScroll.smooth);
           /* drive the demand-mode 3D canvas at ~120-133Hz max — the
              ticker itself stays at native refresh (Lenis + DOM writes
-             are cheap; only the WebGL render needed rate-limiting) */
+             are cheap; only the WebGL render needed rate-limiting).
+             While the live iframe fully covers the screen the scene is
+             frozen AND hidden, so rendering pauses entirely — but only
+             while liveTarget is still 1, because the exit clock advances
+             inside useFrame and needs frames to run. */
           const now = performance.now();
-          if (visRef.current && now - lastInvalidate >= 7.5) {
+          const coveredByIframe =
+            swScroll.live >= 0.999 && swScroll.liveTarget === 1;
+          if (visRef.current && !coveredByIframe && now - lastInvalidate >= 7.5) {
             lastInvalidate = now;
             invalidate();
           }

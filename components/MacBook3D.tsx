@@ -540,6 +540,13 @@ function MacUnit({
 
 function CameraRig({ reg }: { reg: Registry }) {
   const { camera, viewport } = useThree();
+  const setDpr = useThree((s) => s.setDpr);
+  /* dynamic resolution during the dive (game-style DRS): close-up the
+     laptop covers the whole viewport and fill cost peaks — dropping to
+     dpr 1 while the camera travels is invisible (motion masks it) and
+     cuts the pixel load ~2.25×. Swapped only at the STATIC ends of the
+     dive so the resize itself can never be seen. */
+  const dprLow = useRef(false);
   const tmp = useRef({
     look: new THREE.Vector3(),
     aPos: new THREE.Vector3(),
@@ -599,6 +606,20 @@ function CameraRig({ reg }: { reg: Registry }) {
         p: camera.position.clone(),
         fov: (camera as THREE.PerspectiveCamera).fov,
       };
+
+    /* dive resolution swap — engage the moment live mode starts (camera
+       still parked until 0.15), release only after the exit fully lands */
+    if (!dprLow.current && swScroll.liveTarget === 1) {
+      dprLow.current = true;
+      setDpr(1);
+    } else if (
+      dprLow.current &&
+      swScroll.liveTarget === 0 &&
+      swScroll.live === 0
+    ) {
+      dprLow.current = false;
+      setDpr(Math.min(window.devicePixelRatio || 1, 1.5));
+    }
     // swScroll.smooth is damped by SelectedWork's gsap ticker (single
     // writer). The live dive is a deterministic CLOCK, not a damp:
     // ~2.6s in — one pure, exactly reversible progress value.
