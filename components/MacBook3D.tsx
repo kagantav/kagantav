@@ -577,6 +577,24 @@ function getScreenGlass() {
   sh.addColorStop(1, "rgba(255,255,255,0)");
   g.fillStyle = sh;
   g.fillRect(0, 0, W, H);
+  /* opaque bezel-black caps on the bottom corners: they round the video
+     plane below without an alphaMap (VideoTexture + alphaMap renders
+     black in three — the top corners are rounded by the chrome strip's
+     own mask, which is a CanvasTexture and unaffected) */
+  g.fillStyle = "#050403";
+  const cr = Math.round(H * 0.038);
+  g.beginPath();
+  g.moveTo(0, H);
+  g.lineTo(cr, H);
+  g.arc(cr, H - cr, cr, Math.PI / 2, Math.PI);
+  g.closePath();
+  g.fill();
+  g.beginPath();
+  g.moveTo(W, H);
+  g.lineTo(W, H - cr);
+  g.arc(W - cr, H - cr, cr, 0, Math.PI / 2);
+  g.closePath();
+  g.fill();
   screenGlass = new THREE.CanvasTexture(c);
   screenGlass.colorSpace = THREE.SRGBColorSpace;
   return screenGlass;
@@ -645,10 +663,16 @@ function ScreenPlane({
       v.muted = true;
       v.loop = true;
       v.playsInline = true;
-      v.preload = "metadata";
+      v.preload = "auto";
       const t = new THREE.VideoTexture(v);
       t.colorSpace = THREE.SRGBColorSpace;
       (t as THREE.VideoTexture & { __video?: HTMLVideoElement }).__video = v;
+      /* debug handle — the element lives off-DOM and is otherwise
+         unreachable from devtools */
+      if (typeof window !== "undefined") {
+        const w = window as unknown as { __swVids?: Record<string, HTMLVideoElement> };
+        (w.__swVids ||= {})[project.id + ":" + idx] = v;
+      }
       return cropToViewport(t);
     }
     return getPlaceholderTexture(project, idx);
@@ -658,10 +682,32 @@ function ScreenPlane({
     const v = (tex as THREE.Texture & { __video?: HTMLVideoElement }).__video;
     if (!v) return;
     if (settled) {
-      syncVideoPhase(v);
-      v.play().catch(() => {});
+      const tryPlay = () => {
+        syncVideoPhase(v);
+        v.play().catch(() => {});
+      };
+      if (v.readyState >= 2) tryPlay();
+      else {
+        v.addEventListener("canplay", tryPlay, { once: true });
+        v.load();
+      }
     } else v.pause();
   }, [settled, tex]);
+
+  /* Chromium does not reliably fire frame callbacks for off-DOM video
+     elements, so the VideoTexture never marked itself dirty — the 3D
+     screen stayed black while the video was audibly "playing". Mark the
+     texture dirty on every rendered frame while the video has data
+     (and at least once for the paused transit frame). */
+  const uploadedOnce = useRef(false);
+  useFrame(() => {
+    const v = (tex as THREE.Texture & { __video?: HTMLVideoElement }).__video;
+    if (!v) return;
+    if (v.readyState >= 2 && (!v.paused || !uploadedOnce.current)) {
+      tex.needsUpdate = true;
+      uploadedOnce.current = true;
+    }
+  });
 
   const w = rig.screenWorld.w * SCREEN_INSET;
   const h = rig.screenWorld.h * SCREEN_INSET;
@@ -681,7 +727,6 @@ function ScreenPlane({
             <meshBasicMaterial
               ref={matRef}
               map={tex}
-              alphaMap={getPartialMask("bottom")}
               transparent
               opacity={0}
               toneMapped={false}

@@ -66,15 +66,18 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
     year: "2026",
   },
   {
-    id: "noir-commerce",
-    name: "Noir Commerce",
-    category: "E-Commerce Platform",
+    id: "bilitro3d",
+    name: "Bilitro 3D",
+    category: "Kurumsal — 3D Stüdyo",
     description:
-      "Headless storefront for a premium fashion label — sub-second page loads, cinematic product storytelling and a frictionless checkout.",
-    stack: ["Next.js", "Shopify", "Tailwind", "Stripe"],
-    desktopMedia: { type: "image", src: null },
-    mobileMedia: { type: "image", src: null },
-    liveUrl: DEV_PLACEHOLDER_LIVE_URL, // TEMP dev-only
+      "3D modelleme, CGI animasyon ve anamorfik LED ekran içerikleri üreten stüdyonun tanıtım sitesi — sinematik hero videoları ve teknoloji odaklı bir portfolyo deneyimi.",
+    // TODO(kağan): gerçek stack'i teyit et
+    stack: ["3D / CGI", "Animasyon", "UI/UX", "SEO"],
+    desktopMedia: { type: "video", src: "/assets/projects/bilitro3d/desktop.mp4" },
+    mobileMedia: { type: "video", src: "/assets/projects/bilitro3d/mobile.mp4" },
+    // X-Frame-Options: SAMEORIGIN → gömülü önizleme kapalı
+    liveUrl: "https://bilitro3d.com",
+    liveEmbed: false,
     accentColor: "#e8c06a",
     year: "2026",
   },
