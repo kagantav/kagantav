@@ -54,8 +54,8 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
     category: "E-Ticaret — Pet Shop",
     description:
       "Kedi ve köpek sahipleri için premium pet ürünleri mağazası — sezonluk koleksiyonlar, avantajlı paketler ve animasyonlu, akıcı bir alışveriş deneyimi.",
-    // TODO(kağan): gerçek stack'i doğrula — şimdilik nötr etiketler
-    stack: ["E-Ticaret", "UI/UX", "Animasyon", "SEO"],
+    // Shopify doğrulandı (cdn/shop varlıkları); kalanını Kağan teyit edecek
+    stack: ["Shopify", "E-Ticaret", "UI/UX", "SEO"],
     desktopMedia: { type: "video", src: "/assets/projects/miyavhav/desktop.mp4" },
     mobileMedia: { type: "video", src: "/assets/projects/miyavhav/mobile.mp4" },
     // site X-Frame-Options: DENY gönderiyor → gömülü önizleme kapalı
