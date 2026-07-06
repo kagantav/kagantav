@@ -151,8 +151,8 @@
 
 .phoneWrap {
   position: absolute;
-  right: 5%;
-  bottom: -7%;
+  right: -1%;
+  bottom: -9%;
   width: 23.5%;
   aspect-ratio: 658 / 1333;
   z-index: 3;

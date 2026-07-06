@@ -53,8 +53,10 @@ function seg(p: number) {
    Cinematic pose keys (world units around the showcase center)
    ════════════════════════════════════════════════ */
 const P_IN0 = { x: -5.1, y: -0.15, z: -1.8, ry: -0.55, rx: -0.05, rz: -0.025, s: 0.79 };
-/** THE canonical settled pose — the single source for "on stage". */
-const P_SHOW = { x: 0, y: 0, z: 0, ry: 0.08, rx: -0.025, rz: 0, s: 1 };
+/** THE canonical settled pose — the single source for "on stage".
+ *  rx tips the WHOLE unit forward (lid angle untouched) so the camera
+ *  looks slightly down onto the deck and the keyboard reads clearly. */
+const P_SHOW = { x: 0, y: 0.05, z: 0, ry: 0.08, rx: 0.13, rz: 0, s: 1 };
 const P_OUT1 = { x: 5.6, y: 0.1, z: -2.2, ry: 0.55, rx: 0.06, rz: 0.025, s: 0.77 };
 
 export interface UnitPose {
@@ -1243,7 +1245,7 @@ function StageRoot({ children }: { children: React.ReactNode }) {
   const portrait = viewport.aspect < 1.05;
   return (
     <group
-      position={portrait ? [0, -0.1, 0] : [-viewport.width * 0.16, -0.95, 0]}
+      position={portrait ? [0, -0.1, 0] : [-viewport.width * 0.19, -0.95, 0]}
       scale={portrait ? 0.62 : 1}
     >
       {children}

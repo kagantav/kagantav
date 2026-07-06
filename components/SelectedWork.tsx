@@ -91,7 +91,7 @@ function quadMatrix3d(
 /** bumped with every motion-fix round — printed to the console and shown
  *  in the ?swdebug HUD so there is never any doubt WHICH code is running
  *  in the browser being tested */
-const BUILD_TAG = "r19-firstframe-06.07";
+const BUILD_TAG = "r20-desklayout-06.07";
 const pad = (n: number) => String(n + 1).padStart(2, "0");
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
@@ -803,10 +803,15 @@ export default function SelectedWork() {
              SECOND vsync exactly (clean 120Hz cadence) — a fractional
              rate like 133Hz alternates 1-and-2 vsync intervals and that
              irregularity IS the perceived judder. ≤120Hz displays tick
-             at ≥8.33ms, so nothing changes there. */
+             at ≥8.33ms, so nothing changes there.
+             DURING LIVE the canvas must keep rendering (fully pausing
+             left a cleared buffer after the dpr-boost resize → black
+             screen behind the zoom), but the scene is frozen and its
+             video runs at 24fps — 30Hz is plenty. The CSS zoom itself
+             is compositor-borne and stays at native refresh. */
           const now = performance.now();
-          const divePaused = swScroll.live > 0.02;
-          if (visRef.current && !divePaused && now - lastInvalidate >= 8.2) {
+          const gateMs = swScroll.live > 0.02 ? 33 : 8.2;
+          if (visRef.current && now - lastInvalidate >= gateMs) {
             lastInvalidate = now;
             invalidate();
           }
