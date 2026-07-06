@@ -91,7 +91,7 @@ function quadMatrix3d(
 /** bumped with every motion-fix round — printed to the console and shown
  *  in the ?swdebug HUD so there is never any doubt WHICH code is running
  *  in the browser being tested */
-const BUILD_TAG = "r14-bezel-06.07";
+const BUILD_TAG = "r15-macos-06.07";
 const pad = (n: number) => String(n + 1).padStart(2, "0");
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
@@ -941,27 +941,93 @@ export default function SelectedWork() {
         <MacBook3D aIdx={aIdx} bIdx={bIdx} settledIdx={settled} />
 
         {/* DOM screen overlay — the settled MacBook's display as a real
-            <video>, perspective-mapped onto the 3D screen quad */}
+            <video> inside a macOS + Safari chrome, perspective-mapped
+            onto the 3D screen quad */}
         <div className={styles.screenOvHost} aria-hidden="true">
           <div ref={screenOvRef} className={styles.screenOv}>
-            {(() => {
-              const m = FEATURED_PROJECTS[overlayProj]?.desktopMedia;
-              if (m?.type === "video" && m.src)
-                return (
-                  <video
-                    ref={screenOvVideoRef}
-                    src={m.src}
-                    muted
-                    loop
-                    playsInline
-                    preload="auto"
-                  />
-                );
-              if (m?.type === "image" && m.src)
-                // eslint-disable-next-line @next/next/no-img-element
-                return <img src={m.src} alt="" />;
-              return null;
-            })()}
+            {/* macOS menu bar with notch */}
+            <div className={styles.macMenuBar}>
+              <span className={styles.macApple}>
+                <svg viewBox="0 0 814 1000">
+                  <path d="M788 341c-6 4-107 62-107 187 0 145 127 197 131 198-1 3-20 71-67 140-42 61-86 122-153 122s-84-39-161-39c-75 0-102 40-163 40s-104-56-153-125C58 785 13 664 13 549c0-185 120-283 238-283 63 0 115 41 155 41 38 0 97-44 169-44 27 0 125 3 189 95zM554 172c31-37 53-88 53-139 0-7-1-14-2-20-50 2-110 34-146 76-28 32-55 83-55 135 0 8 2 16 2 18 3 1 8 2 13 2 45 0 102-30 135-72z" />
+                </svg>
+              </span>
+              <span className={styles.macMenuApp}>Safari</span>
+              <span>File</span>
+              <span>Edit</span>
+              <span>View</span>
+              <span>History</span>
+              <span>Bookmarks</span>
+              <span>Window</span>
+              <span>Help</span>
+              <i className={styles.macNotch} />
+              <span className={styles.macMenuRight}>
+                <svg className={styles.macWifi} viewBox="0 0 24 24">
+                  <path d="M12 19.5 3.3 10.6a12.3 12.3 0 0 1 17.4 0Z" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+                </svg>
+                <svg className={styles.macBattery} viewBox="0 0 30 14">
+                  <rect x="1" y="1.5" width="24" height="11" rx="3" fill="none" stroke="currentColor" strokeWidth="1.4" />
+                  <rect x="3" y="3.5" width="17" height="7" rx="1.6" fill="currentColor" />
+                  <path d="M27 5v4c1.4-.3 2.2-1 2.2-2S28.4 5.3 27 5Z" fill="currentColor" />
+                </svg>
+                <span>Paz 14:32</span>
+              </span>
+            </div>
+            {/* Safari toolbar */}
+            <div className={styles.safariBar}>
+              <span className={styles.trafficLights}>
+                <i />
+                <i />
+                <i />
+              </span>
+              <svg className={styles.safariNav} viewBox="0 0 24 24">
+                <path d="M14.5 5 8 12l6.5 7" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <svg className={`${styles.safariNav} ${styles.safariNavDim}`} viewBox="0 0 24 24">
+                <path d="M9.5 5 16 12l-6.5 7" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span className={styles.safariUrl}>
+                <svg viewBox="0 0 16 16">
+                  <rect x="3.4" y="7" width="9.2" height="6.4" rx="1.6" fill="currentColor" />
+                  <path d="M5.4 7V5.2a2.6 2.6 0 0 1 5.2 0V7" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                </svg>
+                {(() => {
+                  const u = FEATURED_PROJECTS[overlayProj]?.liveUrl;
+                  try {
+                    return u ? new URL(u).hostname.replace(/^www\./, "") : "localhost";
+                  } catch {
+                    return "localhost";
+                  }
+                })()}
+              </span>
+              <svg className={styles.safariNav} viewBox="0 0 24 24">
+                <path d="M12 3v12M7.5 7.5 12 3l4.5 4.5M5 12v7h14v-7" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <svg className={styles.safariNav} viewBox="0 0 24 24">
+                <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </div>
+            {/* the site itself */}
+            <div className={styles.screenOvViewport}>
+              {(() => {
+                const m = FEATURED_PROJECTS[overlayProj]?.desktopMedia;
+                if (m?.type === "video" && m.src)
+                  return (
+                    <video
+                      ref={screenOvVideoRef}
+                      src={m.src}
+                      muted
+                      loop
+                      playsInline
+                      preload="auto"
+                    />
+                  );
+                if (m?.type === "image" && m.src)
+                  // eslint-disable-next-line @next/next/no-img-element
+                  return <img src={m.src} alt="" />;
+                return null;
+              })()}
+            </div>
             <i className={styles.screenOvGlass} />
           </div>
         </div>
