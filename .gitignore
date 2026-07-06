@@ -12,3 +12,6 @@ npm-debug.log*
 
 # local screen recordings
 Recording *.mp4
+
+# playwright mcp logs
+.playwright-mcp/

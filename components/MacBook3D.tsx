@@ -595,11 +595,24 @@ function CameraRig({ reg }: { reg: Registry }) {
       };
     // swScroll.smooth is damped by SelectedWork's gsap ticker (single
     // writer). The live dive is a deterministic CLOCK, not a damp:
-    // ~2.6s in, ~2.3s out — one pure, exactly reversible progress value.
+    // ~2.6s in — one pure, exactly reversible progress value.
     if (swScroll.liveTarget === 1 && swScroll.live < 1)
       swScroll.live = Math.min(1, swScroll.live + dt / 2.6);
-    else if (swScroll.liveTarget === 0 && swScroll.live > 0)
-      swScroll.live = Math.max(0, swScroll.live - dt / 2.3);
+    else if (swScroll.liveTarget === 0 && swScroll.live > 0) {
+      /* exit: SAME visual path (every value stays a pure function of
+         live), but the clock glides faster through the two flat zones
+         of the shared camera curve — cb is pinned at 1 above ~0.80 and
+         parked at 0 below ~0.15. Without this the retreat read as:
+         pause inside the screen → travel → near-home crawl (the laptop
+         hangs just right of its spot) → perceived end snap. The speed
+         factor is a smooth function of live, so velocity is continuous
+         and the whole exit is ONE unbroken motion. */
+      const L = swScroll.live;
+      const zoneA = smoother(clamp01((L - 0.72) / 0.26));
+      const zoneB = 1 - smoother(clamp01((L - 0.04) / 0.3));
+      const speed = 1 + 1.7 * Math.max(zoneA, zoneB);
+      swScroll.live = Math.max(0, L - (dt * speed) / 2.3);
+    }
 
     const portrait = viewport.aspect < 1.05;
     const { lt } = seg(swScroll.smooth);

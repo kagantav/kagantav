@@ -258,10 +258,11 @@ export default function SelectedWork() {
   const exitLive = () => {
     if (live !== "on" && live !== "enter") return;
     setLive("exit");
-    // let the iframe fade first, then pull the camera back out
+    // brief head start for the iframe fade — the camera then pulls back
+    // behind it while it is still dissolving (depth, no dead pause)
     window.setTimeout(() => {
       swScroll.liveTarget = 0;
-    }, 240);
+    }, 120);
   };
 
   /* enter: hand off to the DOM iframe once the display fills the view;
