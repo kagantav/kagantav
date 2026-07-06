@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import HeroRig3D from "./HeroRig3D";
@@ -219,6 +219,24 @@ export default function CinematicScene() {
     }, scene);
 
     return () => ctx.revert();
+  }, []);
+
+  /* the ambient backdrop video keeps DECODING even when the hero is
+     scrolled far out of view — a constant CPU/GPU tax under the pinned
+     sections below. Pause it off-screen, resume seamlessly on return. */
+  useEffect(() => {
+    const scene = sceneRef.current;
+    const video = scene?.querySelector<HTMLVideoElement>("[data-video]");
+    if (!scene || !video) return;
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) video.play().catch(() => {});
+        else video.pause();
+      },
+      { rootMargin: "200px 0px" }
+    );
+    io.observe(scene);
+    return () => io.disconnect();
   }, []);
 
   return (

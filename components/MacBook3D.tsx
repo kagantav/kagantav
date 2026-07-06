@@ -585,7 +585,13 @@ function CameraRig({ reg }: { reg: Registry }) {
   }, []);
 
   useFrame((_, rawDt) => {
-    const dt = Math.min(rawDt, 0.05);
+    /* STALL-PROOF clock: cap the step at two 60fps frames. A main-thread
+       stall (GC, iframe layer teardown, recorder hiccup) then PAUSES the
+       dive instead of skipping ahead — when frames resume, the camera
+       continues from exactly where the viewer last saw it. A time-true
+       clock "owes" the stalled time and burns half the path in a couple
+       of frames: that WAS the perceived exit teleport. */
+    const dt = Math.min(rawDt, 1 / 30);
     /* capture the frozen camera pose BEFORE anything moves this frame —
        the exit must land exactly here */
     if (swScroll.liveTarget === 1 && swScroll.live === 0 && !frozenCam.current)

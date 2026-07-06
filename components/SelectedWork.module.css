@@ -633,7 +633,11 @@
 }
 
 .liveDive[data-state="exit"] .liveFrame {
-  opacity: 0;
+  /* NOT 0: keeping the layer barely alive defers the browser's
+     composited-iframe layer teardown to the "off" state, where the
+     screen is static — tearing it down MID-retreat caused a several-
+     hundred-ms main-thread stall on some GPUs (the perceived snap) */
+  opacity: 0.001;
   pointer-events: none;
 }
 

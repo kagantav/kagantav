@@ -438,6 +438,10 @@ export default function SelectedWork() {
          progress is only ever a target */
       let lastP = NaN;
       let lastLive = NaN;
+      const glowMix: { k: number; fn: ((t: number) => string) | null } = {
+        k: -1,
+        fn: null,
+      };
       const applyVisual = (p: number) => {
         /* parked and no live activity → nothing below would change;
            skip every DOM write so the main thread stays idle */
@@ -537,16 +541,19 @@ export default function SelectedWork() {
           autoAlpha: clamp01(ph / 0.3) * liveDim,
         });
 
-        /* ── glow hands off from the outgoing pair to the incoming ── */
+        /* ── glow hands off from the outgoing pair to the incoming ──
+           (interpolator cached per segment — building it every tick
+           allocated garbage all through the transition) */
         if (glow) {
           const mixT = clamp01((lt - 0.3) / 0.4);
-          glow.style.setProperty(
-            "--accent",
-            gsap.utils.interpolate(
+          if (glowMix.k !== kk) {
+            glowMix.k = kk;
+            glowMix.fn = gsap.utils.interpolate(
               FEATURED_PROJECTS[kk].accentColor,
               FEATURED_PROJECTS[Math.min(kk + 1, N - 1)].accentColor
-            )(mixT)
-          );
+            );
+          }
+          glow.style.setProperty("--accent", glowMix.fn!(mixT));
           gsap.set(glow, {
             x: -12 * vw * bump(to),
             opacity: (1 - 0.25 * bump(to)) * liveDim,
@@ -602,7 +609,10 @@ export default function SelectedWork() {
            keeps DOM + 3D perfectly in sync (runs even while the canvas
            is still loading the model) */
         const tick = (_t: number, deltaMS: number) => {
-          const dt = Math.min(deltaMS / 1000, 0.05);
+          /* cap at two 60fps frames: after a main-thread stall the damp
+             glides on from where it froze instead of closing the gap in
+             a few giant steps ("the laptop covers too much distance") */
+          const dt = Math.min(deltaMS / 1000, 1 / 30);
           /* while live mode owns the scene the damped progress is frozen
              solid — ScrollTrigger may write `progress` all it wants, the
              base scene never sees it. applyVisual still runs so the

@@ -15,3 +15,4 @@ Recording *.mp4
 
 # playwright mcp logs
 .playwright-mcp/
+*video*.mp4
