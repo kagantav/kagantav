@@ -121,7 +121,10 @@ function poseFromDistance(d: number): UnitPose {
     rz: lerp(P_SHOW.rz, P_OUT1.rz, e),
     s: lerp(P_SHOW.s, P_OUT1.s, e),
     opacity: 1 - smoother(clamp01((lt - 0.5) / 0.46)),
-    lidT: lt < 0.15 ? 1 : 1 - 0.9 * smoother(clamp01((lt - 0.18) / 0.6)),
+    /* lid starts closing LATE so the screen content lives as long as
+       the phone's (the early close used to kill the display at ~35%
+       of the exit while the phone stayed lit to ~88%) */
+    lidT: lt < 0.4 ? 1 : 1 - 0.9 * smoother(clamp01((lt - 0.4) / 0.5)),
     presence: 1 - smoother(clamp01((lt - 0.35) / 0.45)),
   };
 }
@@ -806,7 +809,14 @@ function MacUnit({
     /* screen: black until the lid is mostly open, then the preview glows
        in; dims again as the lid closes on exit */
     if (screenMat.current) {
-      const on = smooth(clamp01((lidT - 0.72) / 0.26));
+      const lidOn = smooth(clamp01((lidT - 0.72) / 0.26));
+      /* OUTGOING: the display fades on the PHONE's exact curve
+         (1 - smoother((lt-0.46)/0.42)) so both screens die together;
+         the lid-based curve still owns the incoming open-up moment.
+         Continuous at d = 0: both branches evaluate to 1. */
+      const outHold =
+        d > 0 ? 1 - smoother(clamp01((d - 0.46) / 0.42)) : 0;
+      const on = Math.max(lidOn, outHold);
       screenMat.current.opacity = on * opacity;
       if (glassMat.current) glassMat.current.opacity = on * opacity;
       if (chromeMat.current) chromeMat.current.opacity = on * opacity;
