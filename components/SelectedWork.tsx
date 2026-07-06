@@ -30,10 +30,68 @@ const TRANSITIONS = N - 1;
 /** smootherstep — zero 1st AND 2nd derivative at both ends */
 const smooth5 = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
 
+/* source-rect size of the DOM screen overlay (matches the capture
+   ratio); matrix3d maps this rect onto the projected 3D screen quad */
+const OV_W = 1600;
+const OV_H = 1040;
+
+/* ── 4-point perspective mapping (projective transform) ──
+   Maps the (0,0)-(w,0)-(w,h)-(0,h) rect onto an arbitrary quad.
+   Classic adjugate method; returns a CSS matrix3d() string. */
+type Nine = number[];
+function adj3(m: Nine): Nine {
+  return [
+    m[4] * m[8] - m[5] * m[7], m[2] * m[7] - m[1] * m[8], m[1] * m[5] - m[2] * m[4],
+    m[5] * m[6] - m[3] * m[8], m[0] * m[8] - m[2] * m[6], m[2] * m[3] - m[0] * m[5],
+    m[3] * m[7] - m[4] * m[6], m[1] * m[6] - m[0] * m[7], m[0] * m[4] - m[1] * m[3],
+  ];
+}
+function mul3(a: Nine, b: Nine): Nine {
+  const r = new Array(9).fill(0);
+  for (let i = 0; i < 3; i++)
+    for (let j = 0; j < 3; j++)
+      r[i * 3 + j] = a[i * 3] * b[j] + a[i * 3 + 1] * b[3 + j] + a[i * 3 + 2] * b[6 + j];
+  return r;
+}
+function mulV3(m: Nine, v: number[]): number[] {
+  return [
+    m[0] * v[0] + m[1] * v[1] + m[2] * v[2],
+    m[3] * v[0] + m[4] * v[1] + m[5] * v[2],
+    m[6] * v[0] + m[7] * v[1] + m[8] * v[2],
+  ];
+}
+function basisToPoints(
+  x1: number, y1: number, x2: number, y2: number,
+  x3: number, y3: number, x4: number, y4: number
+): Nine {
+  const m: Nine = [x1, x2, x3, y1, y2, y3, 1, 1, 1];
+  const v = mulV3(adj3(m), [x4, y4, 1]);
+  return mul3(m, [v[0], 0, 0, 0, v[1], 0, 0, 0, v[2]]);
+}
+/** corners: TL, TR, BR, BL in destination pixels */
+function quadMatrix3d(
+  w: number, h: number,
+  x0: number, y0: number, x1: number, y1: number,
+  x2: number, y2: number, x3: number, y3: number
+): string {
+  const src = basisToPoints(0, 0, w, 0, 0, h, w, h);
+  const dst = basisToPoints(x0, y0, x1, y1, x3, y3, x2, y2);
+  const t = mul3(dst, adj3(src));
+  if (!t[8]) return "";
+  for (let i = 0; i < 9; i++) t[i] /= t[8];
+  const m = [
+    t[0], t[3], 0, t[6],
+    t[1], t[4], 0, t[7],
+    0, 0, 1, 0,
+    t[2], t[5], 0, t[8],
+  ];
+  return `matrix3d(${m.join(",")})`;
+}
+
 /** bumped with every motion-fix round — printed to the console and shown
  *  in the ?swdebug HUD so there is never any doubt WHICH code is running
  *  in the browser being tested */
-const BUILD_TAG = "r12-mobilefit-06.07";
+const BUILD_TAG = "r13-domscreen-06.07";
 const pad = (n: number) => String(n + 1).padStart(2, "0");
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
@@ -195,6 +253,8 @@ export default function SelectedWork() {
     "loading"
   );
   const liveBtnRef = useRef<HTMLButtonElement>(null);
+  const screenOvRef = useRef<HTMLDivElement>(null);
+  const screenOvVideoRef = useRef<HTMLVideoElement>(null);
   const savedScrollY = useRef(0);
   /** scroll progress frozen at live-enter; restored verbatim at exit */
   const frozenProg = useRef(0);
@@ -415,8 +475,12 @@ export default function SelectedWork() {
      the LAST settled project through transitions (settled = -1) so the
      iframe is never unmounted/remounted mid-scroll. */
   const [overlayProj, setOverlayProj] = useState(0);
+  const overlayProjRef = useRef(0);
   useEffect(() => {
-    if (settled >= 0) setOverlayProj(settled);
+    if (settled >= 0) {
+      setOverlayProj(settled);
+      overlayProjRef.current = settled;
+    }
   }, [settled]);
   const overlayIdx = swScroll.liveIdx >= 0 ? swScroll.liveIdx : overlayProj;
   const overlayEmbeddable =
@@ -740,6 +804,39 @@ export default function SelectedWork() {
             lastInvalidate = now;
             invalidate();
           }
+
+          /* ── DOM screen overlay: a REAL <video>, matrix3d-mapped onto
+             the projected 3D screen quad. The compositor plays it (same
+             smoothness as the phone); the WebGL texture keeps rendering
+             identical, phase-synced content underneath, so fading this
+             in/out around the settled state is invisible. ── */
+          const ov = screenOvRef.current;
+          if (ov) {
+            const q = swScroll.quad;
+            /* the pose is EXACTLY P_SHOW across the whole settle band
+               (physical travel starts at |d| = 0.15), so the overlay can
+               stay up until just before motion begins */
+            const settleFade =
+              q.on && q.idx === overlayProjRef.current
+                ? 1 - clamp01((Math.abs(q.d) - 0.11) / 0.035)
+                : 0;
+            const a = settleFade * (1 - clamp01(swScroll.live / 0.08));
+            const vid = screenOvVideoRef.current;
+            if (a > 0.001) {
+              ov.style.opacity = String(a);
+              ov.style.transform = quadMatrix3d(
+                OV_W, OV_H,
+                q.x0, q.y0, q.x1, q.y1, q.x2, q.y2, q.x3, q.y3
+              );
+              if (vid && vid.paused && a > 0.5) {
+                syncVideoPhase(vid);
+                vid.play().catch(() => {});
+              }
+            } else {
+              ov.style.opacity = "0";
+              if (vid && !vid.paused) vid.pause();
+            }
+          }
         };
         gsap.ticker.add(tick);
         applyVisual(0);
@@ -842,6 +939,32 @@ export default function SelectedWork() {
 
         {/* real 3D MacBooks — full-stage canvas so they can enter/exit */}
         <MacBook3D aIdx={aIdx} bIdx={bIdx} settledIdx={settled} />
+
+        {/* DOM screen overlay — the settled MacBook's display as a real
+            <video>, perspective-mapped onto the 3D screen quad */}
+        <div className={styles.screenOvHost} aria-hidden="true">
+          <div ref={screenOvRef} className={styles.screenOv}>
+            {(() => {
+              const m = FEATURED_PROJECTS[overlayProj]?.desktopMedia;
+              if (m?.type === "video" && m.src)
+                return (
+                  <video
+                    ref={screenOvVideoRef}
+                    src={m.src}
+                    muted
+                    loop
+                    playsInline
+                    preload="auto"
+                  />
+                );
+              if (m?.type === "image" && m.src)
+                // eslint-disable-next-line @next/next/no-img-element
+                return <img src={m.src} alt="" />;
+              return null;
+            })()}
+            <i className={styles.screenOvGlass} />
+          </div>
+        </div>
 
         <div className={styles.devices3d}>
           <div className={styles.devices} data-sw-devices>

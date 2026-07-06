@@ -29,6 +29,22 @@ export const swScroll = {
    * work, immune to GPU render stalls on any machine.
    */
   zoom: { ox: 0, oy: 0, tx: 0, ty: 0, s: 1 },
+  /**
+   * The settled MacBook's screen quad projected to canvas CSS pixels,
+   * updated every rendered frame. The DOM screen overlay (a real
+   * <video>, compositor-smooth like the phone) is matrix3d-mapped onto
+   * this quad — WebGL keeps rendering the same content underneath for
+   * transitions and the dive, so the swap is invisible.
+   */
+  quad: {
+    on: false,
+    idx: -1,
+    d: 1,
+    x0: 0, y0: 0, // top-left
+    x1: 0, y1: 0, // top-right
+    x2: 0, y2: 0, // bottom-right
+    x3: 0, y3: 0, // bottom-left
+  },
 };
 
 /* expose the bus for debugging/automated verification (harmless) */

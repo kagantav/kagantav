@@ -669,6 +669,9 @@ function CameraRig({ reg }: { reg: Registry }) {
     aPos: new THREE.Vector3(),
     aDir: new THREE.Vector3(),
     q: new THREE.Quaternion(),
+    right: new THREE.Vector3(),
+    up: new THREE.Vector3(),
+    corner: new THREE.Vector3(),
   });
   /* dev-only frame-to-frame snap detector state */
   const snap = useRef({
@@ -825,6 +828,61 @@ function CameraRig({ reg }: { reg: Registry }) {
     if ((camera as THREE.PerspectiveCamera).fov !== fov) {
       (camera as THREE.PerspectiveCamera).fov = fov;
       (camera as THREE.PerspectiveCamera).updateProjectionMatrix();
+    }
+
+    /* project the (near-)settled unit's screen quad into canvas CSS
+       pixels for the DOM screen overlay — every rendered frame, so the
+       overlay tracks the idle breath exactly */
+    {
+      const absPos = swScroll.smooth * TRANSITIONS;
+      let best: UnitHandle | null = null;
+      let bestD = 1;
+      for (const h of Object.values(reg.current)) {
+        const d = absPos - h.projectIdx;
+        if (Math.abs(d) < Math.abs(bestD)) {
+          bestD = d;
+          best = h;
+        }
+      }
+      const quad = swScroll.quad;
+      if (best?.rig.anchor && Math.abs(bestD) < 0.25) {
+        const v = tmp.current;
+        const el = gl.domElement;
+        const cw = el.clientWidth || 1;
+        const ch = el.clientHeight || 1;
+        best.rig.anchor.updateWorldMatrix(true, false);
+        best.rig.anchor.getWorldPosition(v.aPos);
+        best.rig.anchor.getWorldQuaternion(v.q);
+        /* world half-extents of the screen plane (overscan = 1) */
+        const sw = best.rig.screenWorld.w / 2;
+        const sh = best.rig.screenWorld.h / 2;
+        /* NOTE: anchor axes are uniform-scaled by StageRoot — recover
+           the scale from the world matrix column length */
+        const scl = best.rig.anchor.matrixWorld.elements[0] ** 2 +
+          best.rig.anchor.matrixWorld.elements[1] ** 2 +
+          best.rig.anchor.matrixWorld.elements[2] ** 2;
+        const s = Math.sqrt(scl);
+        v.right.set(1, 0, 0).applyQuaternion(v.q).multiplyScalar(sw * s);
+        v.up.set(0, 1, 0).applyQuaternion(v.q).multiplyScalar(sh * s);
+        const proj = (sx: number, sy: number, ox: "x0" | "x1" | "x2" | "x3", oy: "y0" | "y1" | "y2" | "y3") => {
+          v.corner
+            .copy(v.aPos)
+            .addScaledVector(v.right, sx)
+            .addScaledVector(v.up, sy)
+            .project(camera);
+          quad[ox] = (v.corner.x * 0.5 + 0.5) * cw;
+          quad[oy] = (1 - (v.corner.y * 0.5 + 0.5)) * ch;
+        };
+        proj(-1, 1, "x0", "y0");
+        proj(1, 1, "x1", "y1");
+        proj(1, -1, "x2", "y2");
+        proj(-1, -1, "x3", "y3");
+        quad.on = true;
+        quad.idx = best.projectIdx;
+        quad.d = bestD;
+      } else {
+        quad.on = false;
+      }
     }
     // NOTE: no positive useFrame priority here — that would switch R3F
     // into manual-render mode and blank the whole canvas.
