@@ -33,7 +33,7 @@ const smooth5 = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
 /** bumped with every motion-fix round — printed to the console and shown
  *  in the ?swdebug HUD so there is never any doubt WHICH code is running
  *  in the browser being tested */
-const BUILD_TAG = "r9-compzoom-06.07";
+const BUILD_TAG = "r10-transitdrs-06.07";
 const pad = (n: number) => String(n + 1).padStart(2, "0");
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
@@ -714,9 +714,14 @@ export default function SelectedWork() {
              being zoomed by the compositor — zero renders. A couple of
              frames still flow at the very start (crisp dpr-boosted
              capture) and at the very end (dpr restore). */
+          /* 8.2ms gate: on a 240Hz display this locks renders to every
+             SECOND vsync exactly (clean 120Hz cadence) — a fractional
+             rate like 133Hz alternates 1-and-2 vsync intervals and that
+             irregularity IS the perceived judder. ≤120Hz displays tick
+             at ≥8.33ms, so nothing changes there. */
           const now = performance.now();
           const divePaused = swScroll.live > 0.02;
-          if (visRef.current && !divePaused && now - lastInvalidate >= 7.5) {
+          if (visRef.current && !divePaused && now - lastInvalidate >= 8.2) {
             lastInvalidate = now;
             invalidate();
           }

@@ -548,6 +548,12 @@ function CameraRig({ reg }: { reg: Registry }) {
      transform. CSS transforms are compositor-only, so the dive cannot
      stutter no matter how heavy the 3D scene is. */
   const zoomArmed = useRef(false);
+  /* motion-based dynamic resolution for SCROLL transitions (same proven
+     medicine as the dive): while the laptop travels, render at dpr 1.2
+     — motion masks it and every frame fits the vsync budget, which is
+     what "buttery" actually is (even cadence, not raw sharpness). The
+     full 1.5 comes back only after 300ms of stillness. */
+  const drs = useRef({ lo: false, calmSince: 0 });
   const tmp = useRef({
     look: new THREE.Vector3(),
     aPos: new THREE.Vector3(),
@@ -658,6 +664,25 @@ function CameraRig({ reg }: { reg: Registry }) {
 
     const portrait = viewport.aspect < 1.05;
     const { lt } = seg(swScroll.smooth);
+
+    /* scroll-transit DRS — never while live mode owns the dpr */
+    if (swScroll.liveTarget === 0 && swScroll.live === 0 && !zoomArmed.current) {
+      const chasing =
+        Math.abs(swScroll.smooth - swScroll.progress) > 0.0006;
+      const inTransit = lt > 0.16 && lt < 0.84;
+      const nowMs = performance.now();
+      if (chasing || inTransit) {
+        drs.current.calmSince = nowMs;
+        if (!drs.current.lo) {
+          drs.current.lo = true;
+          setDpr(1.2);
+        }
+      } else if (drs.current.lo && nowMs - drs.current.calmSince > 300) {
+        drs.current.lo = false;
+        setDpr(Math.min(window.devicePixelRatio || 1, 1.5));
+      }
+    }
+
     const phase = clamp01((lt - 0.15) / 0.85);
     const b = bump(phase);
     const amp = portrait ? 0.45 : 1;
