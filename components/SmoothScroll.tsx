@@ -20,7 +20,9 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
     if (prefersReduced) return;
 
     const lenis = new Lenis({
-      duration: 1.15,
+      /* longer glide = the liquid, inertial feel of reference sites;
+         individual wheel notches melt into one continuous ease */
+      duration: 1.3,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       smoothWheel: true,
     });

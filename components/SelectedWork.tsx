@@ -33,7 +33,7 @@ const smooth5 = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
 /** bumped with every motion-fix round — printed to the console and shown
  *  in the ?swdebug HUD so there is never any doubt WHICH code is running
  *  in the browser being tested */
-const BUILD_TAG = "r10-transitdrs-06.07";
+const BUILD_TAG = "r11-feelpass-06.07";
 const pad = (n: number) => String(n + 1).padStart(2, "0");
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
@@ -700,10 +700,14 @@ export default function SelectedWork() {
              base scene never sees it. applyVisual still runs so the
              live-derived fades keep updating. */
           if (!swScroll.frozen) {
+            /* λ7: slightly softer spring than before — tight tracking
+               transmits every wheel-notch ripple straight into the
+               laptop's motion; a touch more float absorbs them without
+               feeling detached at settle */
             swScroll.smooth = gsap.utils.interpolate(
               swScroll.smooth,
               swScroll.progress,
-              1 - Math.exp(-8 * dt)
+              1 - Math.exp(-7 * dt)
             );
           }
           applyVisual(swScroll.smooth);
