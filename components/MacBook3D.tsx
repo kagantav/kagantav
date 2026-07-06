@@ -367,12 +367,12 @@ function makePlaceholderTexture(project: FeaturedProject, idx: number) {
   return t;
 }
 
-/* Screen fit — the content plane slightly OVERSCANS the measured LCD
-   opening (real screens run content flush to the bezel; the previous
-   exact fit left a dark strip at the bottom and read as "pasted on"),
-   with a tiny downward bias to balance the top/bottom margins. */
-const SCREEN_OVERSCAN = 1.045;
-const SCREEN_Y_BIAS = -0.012; // × screen height, + = up
+/* Screen fit — calibration constants. The content sits INSIDE the
+   panel with an even, thin black bezel all around (overscanning past
+   the opening swallowed the bezel and pushed plane edges beyond the
+   lid glass, which showed as stray hairlines). */
+const SCREEN_OVERSCAN = 1.0;
+const SCREEN_Y_BIAS = 0; // × screen height, + = up
 
 /* Rounded-corner alpha mask for the display: the MacBook's screen has
    rounded top corners, and a rectangular texture pokes past them on
@@ -432,12 +432,6 @@ function getScreenGlass() {
   sh.addColorStop(1, "rgba(255,255,255,0)");
   g.fillStyle = sh;
   g.fillRect(0, 0, W, H);
-  /* hairline inner edge catching light at the very top */
-  const top = g.createLinearGradient(0, 0, 0, H * 0.05);
-  top.addColorStop(0, "rgba(255,255,255,0.10)");
-  top.addColorStop(1, "rgba(255,255,255,0)");
-  g.fillStyle = top;
-  g.fillRect(0, 0, W, H * 0.05);
   screenGlass = new THREE.CanvasTexture(c);
   screenGlass.colorSpace = THREE.SRGBColorSpace;
   return screenGlass;
