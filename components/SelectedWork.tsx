@@ -31,7 +31,7 @@ const TRANSITIONS = N - 1;
 /** bumped with every motion-fix round — printed to the console and shown
  *  in the ?swdebug HUD so there is never any doubt WHICH code is running
  *  in the browser being tested */
-const BUILD_TAG = "r6-gpupace-06.07";
+const BUILD_TAG = "r7-lightpass-06.07";
 const pad = (n: number) => String(n + 1).padStart(2, "0");
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
@@ -648,6 +648,7 @@ export default function SelectedWork() {
           { rootMargin: "30% 0px" }
         );
         io.observe(root);
+        let lastInvalidate = 0;
 
         const tick = (_t: number, deltaMS: number) => {
           /* cap at two 60fps frames: after a main-thread stall the damp
@@ -666,8 +667,14 @@ export default function SelectedWork() {
             );
           }
           applyVisual(swScroll.smooth);
-          /* drive the demand-mode 3D canvas at the (capped) ticker rate */
-          if (visRef.current) invalidate();
+          /* drive the demand-mode 3D canvas at ~120-133Hz max — the
+             ticker itself stays at native refresh (Lenis + DOM writes
+             are cheap; only the WebGL render needed rate-limiting) */
+          const now = performance.now();
+          if (visRef.current && now - lastInvalidate >= 7.5) {
+            lastInvalidate = now;
+            invalidate();
+          }
         };
         gsap.ticker.add(tick);
         applyVisual(0);

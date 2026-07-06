@@ -31,11 +31,11 @@ export default function SmoothScroll({ children }: { children: ReactNode }) {
     const tick = (time: number) => lenis.raf(time * 1000);
     gsap.ticker.add(tick);
     gsap.ticker.lagSmoothing(0);
-    /* cap the shared ticker: on 144/240Hz monitors an uncapped ticker
-       multiplies every per-frame cost (style writes, Lenis, 3D
-       invalidation) past what the GPU can sustain — 120Hz is visually
-       indistinguishable and keeps frame pacing even. No-op at ≤120Hz. */
-    gsap.ticker.fps(120);
+    /* NOTE: do NOT cap gsap.ticker.fps here — capping it also throttles
+       Lenis and on a high-Hz monitor that visibly quantized wheel
+       scrolling into steps (r6 regression, confirmed by frame analysis).
+       The GPU-heavy 3D render is rate-limited at its own invalidation
+       site instead. */
 
     return () => {
       scrollBridge.lenis = null;

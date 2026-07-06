@@ -624,8 +624,11 @@
     0 0 80px rgba(216, 169, 79, 0.1);
   /* NOT 0: keeps the pre-loaded iframe layer composited at all times —
      rasterizing it from scratch exactly at the enter handoff caused a
-     one-frame flash + hitch on some GPUs */
+     one-frame flash + hitch on some GPUs. will-change + translateZ pin
+     the layer so the compositor never tears it down between states. */
   opacity: 0.001;
+  will-change: opacity;
+  transform: translateZ(0);
   transition: opacity 0.55s ease;
   pointer-events: none;
 }

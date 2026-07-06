@@ -826,7 +826,12 @@ export default function MacBook3D({
         <StageRoot>
           <MacUnit unit="A" projectIdx={aIdx} settledIdx={settledIdx} reg={reg} />
           <MacUnit unit="B" projectIdx={bIdx} settledIdx={settledIdx} reg={reg} />
+          {/* frames={1}: the shadow is baked ONCE — re-rendering the
+              scene's depth EVERY frame was the single biggest per-frame
+              GPU cost. A soft static pool under the stage center is
+              visually identical for a dark hovering-laptop scene. */}
           <ContactShadows
+            frames={1}
             position={[0, 0.005, 0]}
             opacity={0.55}
             scale={13}
