@@ -16,7 +16,7 @@ import {
   type ProjectMedia,
 } from "./projects";
 import styles from "./SelectedWork.module.css";
-import MacBook3D from "./MacBook3D";
+import MacBook3D, { syncVideoPhase } from "./MacBook3D";
 import { invalidate } from "@react-three/fiber";
 import { swScroll } from "./swScrollBus";
 import { scrollBridge } from "./scrollBridge";
@@ -447,9 +447,14 @@ export default function SelectedWork() {
       { el: pairARef.current, idx: aIdx },
       { el: pairBRef.current, idx: bIdx },
     ].forEach(({ el, idx }) => {
-      el?.querySelectorAll("video").forEach((v) =>
-        idx === settled ? v.play().catch(() => {}) : v.pause()
-      );
+      el?.querySelectorAll("video").forEach((v) => {
+        if (idx === settled) {
+          /* shared wall-clock phase — keeps the phone loop in sync with
+             the laptop's video texture regardless of load timing */
+          syncVideoPhase(v);
+          v.play().catch(() => {});
+        } else v.pause();
+      });
     });
   }, [settled, aIdx, bIdx]);
 

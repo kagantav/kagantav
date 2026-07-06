@@ -367,6 +367,43 @@ function makePlaceholderTexture(project: FeaturedProject, idx: number) {
   return t;
 }
 
+/* Rounded-corner alpha mask for the display: the MacBook's screen has
+   rounded top corners, and a rectangular texture pokes past them on
+   light content. Cached once; used as alphaMap by every screen. */
+let screenMask: THREE.CanvasTexture | null = null;
+function getScreenMask() {
+  if (screenMask) return screenMask;
+  const W = 512;
+  const H = 334;
+  const r = Math.round(H * 0.055);
+  const c = document.createElement("canvas");
+  c.width = W;
+  c.height = H;
+  const g = c.getContext("2d")!;
+  g.fillStyle = "#000";
+  g.fillRect(0, 0, W, H);
+  g.fillStyle = "#fff";
+  g.beginPath();
+  g.roundRect(0, 0, W, H, r);
+  g.fill();
+  screenMask = new THREE.CanvasTexture(c);
+  return screenMask;
+}
+
+/**
+ * All project screen videos derive their playhead from ONE wall clock,
+ * so the laptop and the phone (and any later-loading texture) are
+ * always in the same loop phase no matter when each starts playing.
+ */
+export function syncVideoPhase(v: HTMLVideoElement) {
+  const apply = () => {
+    if (v.duration && isFinite(v.duration))
+      v.currentTime = (performance.now() / 1000) % v.duration;
+  };
+  if (v.readyState >= 1) apply();
+  else v.addEventListener("loadedmetadata", apply, { once: true });
+}
+
 function ScreenPlane({
   rig,
   project,
@@ -405,8 +442,10 @@ function ScreenPlane({
   useEffect(() => {
     const v = (tex as THREE.Texture & { __video?: HTMLVideoElement }).__video;
     if (!v) return;
-    if (settled) v.play().catch(() => {});
-    else v.pause();
+    if (settled) {
+      syncVideoPhase(v);
+      v.play().catch(() => {});
+    } else v.pause();
   }, [settled, tex]);
 
   return createPortal(
@@ -415,6 +454,7 @@ function ScreenPlane({
       <meshBasicMaterial
         ref={matRef}
         map={tex}
+        alphaMap={getScreenMask()}
         transparent
         opacity={0}
         toneMapped={false}
