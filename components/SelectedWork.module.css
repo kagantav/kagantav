@@ -185,6 +185,8 @@
   inset: 0;
   z-index: 2;
   pointer-events: none;
+  /* the CANLI İNCELE dive is a compositor transform of this element */
+  will-change: transform;
 }
 
 .lcdHtml {

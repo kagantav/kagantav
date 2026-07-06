@@ -27,11 +27,13 @@ gsap.registerPlugin(ScrollTrigger);
 
 const N = FEATURED_PROJECTS.length;
 const TRANSITIONS = N - 1;
+/** smootherstep — zero 1st AND 2nd derivative at both ends */
+const smooth5 = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
 
 /** bumped with every motion-fix round — printed to the console and shown
  *  in the ?swdebug HUD so there is never any doubt WHICH code is running
  *  in the browser being tested */
-const BUILD_TAG = "r8-divelite-06.07";
+const BUILD_TAG = "r9-compzoom-06.07";
 const pad = (n: number) => String(n + 1).padStart(2, "0");
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
@@ -453,6 +455,9 @@ export default function SelectedWork() {
       const glow = root.querySelector<HTMLElement>("[data-sw-glow]");
       const panel = root.querySelector<HTMLElement>("[data-sw-panel]");
       const strip = root.querySelector<HTMLElement>("[data-sw-countstrip]");
+      const canvasWrap = root.querySelector<HTMLElement>(
+        `.${styles.macCanvas}`
+      );
       const progFill = root.querySelector<HTMLElement>("[data-sw-prog]");
       const devices = root.querySelector<HTMLElement>("[data-sw-devices]");
       const textBits = Array.from(
@@ -468,6 +473,7 @@ export default function SelectedWork() {
          progress is only ever a target */
       let lastP = NaN;
       let lastLive = NaN;
+      let zoomOn = false;
       const glowMix: { k: number; fn: ((t: number) => string) | null } = {
         k: -1,
         fn: null,
@@ -520,6 +526,26 @@ export default function SelectedWork() {
            the exit is the mathematical reverse of the entrance */
         const liveDim = 1 - easeIO(clamp01(swScroll.live / 0.22));
         if (panel) gsap.set(panel, { autoAlpha: liveDim });
+
+        /* ── COMPOSITOR DIVE: the 3D canvas is a frozen image during
+           live mode; zooming it with a CSS transform is pure compositor
+           work and physically cannot stutter, on any GPU. The exit runs
+           the identical curve backward to a bit-exact identity. ── */
+        const zt = easeIO(clamp01((swScroll.live - 0.1) / 0.72));
+        if (canvasWrap) {
+          if (zt > 0.0001) {
+            zoomOn = true;
+            gsap.set(canvasWrap, {
+              transformOrigin: `${swScroll.zoom.ox}px ${swScroll.zoom.oy}px`,
+              x: swScroll.zoom.tx * zt,
+              y: swScroll.zoom.ty * zt,
+              scale: 1 + (swScroll.zoom.s - 1) * zt,
+            });
+          } else if (zoomOn) {
+            zoomOn = false;
+            gsap.set(canvasWrap, { clearProps: "transform,transformOrigin" });
+          }
+        }
 
         /* ── outgoing pair: long continuous fade (45%→98% of the exit).
            NOTE: no DOM blur — animating a CSS filter re-rasterizes the
@@ -655,6 +681,20 @@ export default function SelectedWork() {
              glides on from where it froze instead of closing the gap in
              a few giant steps ("the laptop covers too much distance") */
           const dt = Math.min(deltaMS / 1000, 1 / 30);
+
+          /* live-dive clock lives HERE (not in useFrame): the 3D canvas
+             stops rendering entirely during the dive, so the clock must
+             run on the always-on ticker. ~2.2s in; the exit glides
+             faster through the flat zones of the zoom curve. */
+          if (swScroll.liveTarget === 1 && swScroll.live < 1)
+            swScroll.live = Math.min(1, swScroll.live + dt / 2.2);
+          else if (swScroll.liveTarget === 0 && swScroll.live > 0) {
+            const L = swScroll.live;
+            const zoneA = smooth5(clamp01((L - 0.74) / 0.24));
+            const zoneB = 1 - smooth5(clamp01((L - 0.04) / 0.26));
+            const speed = 1 + 1.7 * Math.max(zoneA, zoneB);
+            swScroll.live = Math.max(0, L - (dt * speed) / 1.9);
+          }
           /* while live mode owns the scene the damped progress is frozen
              solid — ScrollTrigger may write `progress` all it wants, the
              base scene never sees it. applyVisual still runs so the
@@ -670,14 +710,13 @@ export default function SelectedWork() {
           /* drive the demand-mode 3D canvas at ~120-133Hz max — the
              ticker itself stays at native refresh (Lenis + DOM writes
              are cheap; only the WebGL render needed rate-limiting).
-             While the live iframe fully covers the screen the scene is
-             frozen AND hidden, so rendering pauses entirely — but only
-             while liveTarget is still 1, because the exit clock advances
-             inside useFrame and needs frames to run. */
+             During the ENTIRE live dive the canvas is a frozen image
+             being zoomed by the compositor — zero renders. A couple of
+             frames still flow at the very start (crisp dpr-boosted
+             capture) and at the very end (dpr restore). */
           const now = performance.now();
-          const coveredByIframe =
-            swScroll.live >= 0.999 && swScroll.liveTarget === 1;
-          if (visRef.current && !coveredByIframe && now - lastInvalidate >= 7.5) {
+          const divePaused = swScroll.live > 0.02;
+          if (visRef.current && !divePaused && now - lastInvalidate >= 7.5) {
             lastInvalidate = now;
             invalidate();
           }

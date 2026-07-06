@@ -539,14 +539,15 @@ function MacUnit({
    ════════════════════════════════════════════════ */
 
 function CameraRig({ reg }: { reg: Registry }) {
-  const { camera, viewport } = useThree();
+  const { camera, viewport, gl } = useThree();
   const setDpr = useThree((s) => s.setDpr);
-  /* dynamic resolution during the dive (game-style DRS): close-up the
-     laptop covers the whole viewport and fill cost peaks — dropping to
-     dpr 1 while the camera travels is invisible (motion masks it) and
-     cuts the pixel load ~2.25×. Swapped only at the STATIC ends of the
-     dive so the resize itself can never be seen. */
-  const dprLow = useRef(false);
+  /* COMPOSITOR DIVE: the camera never moves for CANLI İNCELE anymore.
+     At enter we render ONE extra-crisp frame (dpr boost), compute where
+     the frozen screen sits in canvas pixels, and hand those numbers to
+     the DOM ticker — which zooms the static canvas with a pure CSS
+     transform. CSS transforms are compositor-only, so the dive cannot
+     stutter no matter how heavy the 3D scene is. */
+  const zoomArmed = useRef(false);
   const tmp = useRef({
     look: new THREE.Vector3(),
     aPos: new THREE.Vector3(),
@@ -563,10 +564,6 @@ function CameraRig({ reg }: { reg: Registry }) {
     aq: new THREE.Quaternion(),
     bq: new THREE.Quaternion(),
   });
-  /* frozen camera pose captured at live-enter; used for the dev
-     continuity assertion when the exit lands (spec: they must match) */
-  const frozenCam = useRef<{ p: THREE.Vector3; fov: number } | null>(null);
-
   /* dev boundary assertion: the single pose function must be continuous
      through d = 0 (incoming t=1 ≡ settled ≡ outgoing t=0) */
   useEffect(() => {
@@ -598,47 +595,65 @@ function CameraRig({ reg }: { reg: Registry }) {
        continues from exactly where the viewer last saw it. A time-true
        clock "owes" the stalled time and burns half the path in a couple
        of frames: that WAS the perceived exit teleport. */
-    const dt = Math.min(rawDt, 1 / 30);
-    /* capture the frozen camera pose BEFORE anything moves this frame —
-       the exit must land exactly here */
-    if (swScroll.liveTarget === 1 && swScroll.live === 0 && !frozenCam.current)
-      frozenCam.current = {
-        p: camera.position.clone(),
-        fov: (camera as THREE.PerspectiveCamera).fov,
-      };
+    void rawDt; // live clock now advances in SelectedWork's ticker
 
-    /* dive resolution swap — engage the moment live mode starts (camera
-       still parked until 0.15), release only after the exit fully lands */
-    if (!dprLow.current && swScroll.liveTarget === 1) {
-      dprLow.current = true;
-      setDpr(1);
+    /* live-enter (one-time): boost dpr for a single extra-crisp frame,
+       project the frozen screen into canvas pixels, publish the CSS
+       zoom parameters. Both happen while everything is still static. */
+    if (!zoomArmed.current && swScroll.liveTarget === 1) {
+      zoomArmed.current = true;
+      const active = Object.values(reg.current).find(
+        (h) => h.projectIdx === swScroll.liveIdx
+      );
+      if (active?.rig.anchor) {
+        const el = gl.domElement;
+        const w = el.clientWidth || 1;
+        const h = el.clientHeight || 1;
+        const v = tmp.current;
+        active.rig.anchor.getWorldPosition(v.aPos);
+        active.rig.anchor.getWorldQuaternion(v.q);
+        const proj = (p: THREE.Vector3) => {
+          const c = p.clone().project(camera);
+          return { x: (c.x * 0.5 + 0.5) * w, y: (1 - (c.y * 0.5 + 0.5)) * h };
+        };
+        const cpt = proj(v.aPos);
+        const rpt = proj(
+          v.aPos
+            .clone()
+            .add(
+              new THREE.Vector3(1, 0, 0)
+                .applyQuaternion(v.q)
+                .multiplyScalar(active.rig.screenWorld.w / 2)
+            )
+        );
+        const upt = proj(
+          v.aPos
+            .clone()
+            .add(
+              new THREE.Vector3(0, 1, 0)
+                .applyQuaternion(v.q)
+                .multiplyScalar(active.rig.screenWorld.h / 2)
+            )
+        );
+        const halfW = Math.max(1, Math.hypot(rpt.x - cpt.x, rpt.y - cpt.y));
+        const halfH = Math.max(1, Math.hypot(upt.x - cpt.x, upt.y - cpt.y));
+        const fill = Math.max(w / (halfW * 2), h / (halfH * 2)) * 1.12;
+        swScroll.zoom = {
+          ox: cpt.x,
+          oy: cpt.y,
+          tx: w / 2 - cpt.x,
+          ty: h / 2 - cpt.y,
+          s: Math.min(fill, 6),
+        };
+      }
+      setDpr(2);
     } else if (
-      dprLow.current &&
+      zoomArmed.current &&
       swScroll.liveTarget === 0 &&
       swScroll.live === 0
     ) {
-      dprLow.current = false;
+      zoomArmed.current = false;
       setDpr(Math.min(window.devicePixelRatio || 1, 1.5));
-    }
-    // swScroll.smooth is damped by SelectedWork's gsap ticker (single
-    // writer). The live dive is a deterministic CLOCK, not a damp:
-    // ~2.6s in — one pure, exactly reversible progress value.
-    if (swScroll.liveTarget === 1 && swScroll.live < 1)
-      swScroll.live = Math.min(1, swScroll.live + dt / 2.6);
-    else if (swScroll.liveTarget === 0 && swScroll.live > 0) {
-      /* exit: SAME visual path (every value stays a pure function of
-         live), but the clock glides faster through the two flat zones
-         of the shared camera curve — cb is pinned at 1 above ~0.80 and
-         parked at 0 below ~0.15. Without this the retreat read as:
-         pause inside the screen → travel → near-home crawl (the laptop
-         hangs just right of its spot) → perceived end snap. The speed
-         factor is a smooth function of live, so velocity is continuous
-         and the whole exit is ONE unbroken motion. */
-      const L = swScroll.live;
-      const zoneA = smoother(clamp01((L - 0.72) / 0.26));
-      const zoneB = 1 - smoother(clamp01((L - 0.04) / 0.3));
-      const speed = 1 + 1.7 * Math.max(zoneA, zoneB);
-      swScroll.live = Math.max(0, L - (dt * speed) / 2.3);
     }
 
     const portrait = viewport.aspect < 1.05;
@@ -664,52 +679,10 @@ function CameraRig({ reg }: { reg: Registry }) {
     let lz = 0;
     let fov = 34 - 2.6 * b;
 
-    /* live dive — CAMERA ONLY. The MacBook stays frozen at its scroll
-       pose (swScroll.smooth is frozen while live mode owns the scene),
-       so the base camera pose above is static and this whole block is a
-       pure function of the clocked live progress: the camera rotates and
-       dollies toward the screen over 0.15–0.80, and the exit retreats
-       along exactly the same path back to the frozen pose. */
-    const tL = clamp01(swScroll.live);
-    if (tL > 0.001) {
-      const cb = easeIO(clamp01((tL - 0.15) / 0.65));
-      const handles = Object.values(reg.current);
-      const active = handles.find((h) => h.projectIdx === swScroll.liveIdx);
-      if (active?.rig.anchor && cb > 0.0001) {
-        const v = tmp.current;
-        active.rig.anchor.getWorldPosition(v.aPos);
-        active.rig.anchor.getWorldQuaternion(v.q);
-        v.aDir.set(0, 0, 1).applyQuaternion(v.q).normalize();
-        const dist = portrait ? 2.1 : 1.55;
-        px = lerp(px, v.aPos.x + v.aDir.x * dist, cb);
-        py = lerp(py, v.aPos.y + v.aDir.y * dist, cb);
-        pz = lerp(pz, v.aPos.z + v.aDir.z * dist, cb);
-        lx = lerp(lx, v.aPos.x, cb);
-        ly = lerp(ly, v.aPos.y, cb);
-        lz = lerp(lz, v.aPos.z, cb);
-        fov = lerp(fov, 30, cb);
-      }
-    } else if (frozenCam.current && swScroll.liveTarget === 0) {
-      /* exit landed: assert the camera is numerically back at the frozen
-         pose before scroll control is handed back (dev only) */
-      if (
-        process.env.NODE_ENV === "development" &&
-        typeof window !== "undefined" &&
-        window.location.search.includes("swdebug")
-      ) {
-        const dp = Math.hypot(
-          px - frozenCam.current.p.x,
-          py - frozenCam.current.p.y,
-          pz - frozenCam.current.p.z
-        );
-        const df = Math.abs(fov - frozenCam.current.fov);
-        const fn = dp > 1e-4 || df > 1e-3 ? "warn" : "log";
-        console[fn](
-          `[continuity] live-exit camera delta pos=${dp.toExponential(2)} fov=${df.toExponential(2)}`
-        );
-      }
-      frozenCam.current = null;
-    }
+    /* NOTE: no live-dive camera motion anymore — the CANLI İNCELE dive
+       is a compositor-level CSS zoom of the frozen canvas, driven from
+       SelectedWork's ticker. The camera is scroll choreography only,
+       which also means the exit lands on the scroll pose by definition. */
 
     camera.position.set(px, py, pz);
     tmp.current.look.set(lx, ly, lz);

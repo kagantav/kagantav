@@ -21,6 +21,14 @@ export const swScroll = {
    * stays numerically identical no matter what the scroll position does.
    */
   frozen: false,
+  /**
+   * Compositor-dive parameters, computed once at live-enter from the
+   * frozen camera: the screen's center in canvas pixels (origin), the
+   * translation that centers it, and the scale that fills the viewport.
+   * The dive is a CSS transform of the (frozen) canvas — pure compositor
+   * work, immune to GPU render stalls on any machine.
+   */
+  zoom: { ox: 0, oy: 0, tx: 0, ty: 0, s: 1 },
 };
 
 /* expose the bus for debugging/automated verification (harmless) */
