@@ -419,13 +419,19 @@ export default function SelectedWork() {
     if (settled >= 0) setOverlayProj(settled);
   }, [settled]);
   const overlayIdx = swScroll.liveIdx >= 0 ? swScroll.liveIdx : overlayProj;
-  const overlaySrc = liveSrcOf(FEATURED_PROJECTS[overlayIdx]);
+  const overlayEmbeddable =
+    FEATURED_PROJECTS[overlayIdx]?.liveEmbed !== false;
+  const overlaySrc = overlayEmbeddable
+    ? liveSrcOf(FEATURED_PROJECTS[overlayIdx])
+    : null;
+  const overlayHref = liveSrcOf(FEATURED_PROJECTS[overlayIdx]);
 
   /* a different project (or none) settled → the iframe src changes and
-     must load again before it may crossfade in */
+     must load again before it may crossfade in. Projects that forbid
+     embedding go straight to the "Yeni Sekmede Aç" card. */
   useEffect(() => {
-    setFrameState("loading");
-  }, [overlaySrc]);
+    setFrameState(overlayEmbeddable ? "loading" : "fail");
+  }, [overlaySrc, overlayEmbeddable]);
 
   /* the overlay iframe must be created AFTER hydration: if it were in the
      server HTML, example.com would finish loading before React attaches
@@ -952,7 +958,7 @@ export default function SelectedWork() {
                 <br />
                 (X-Frame-Options / CSP).
               </p>
-              <a href={overlaySrc ?? "#"} target="_blank" rel="noreferrer">
+              <a href={overlayHref ?? "#"} target="_blank" rel="noreferrer">
                 Yeni Sekmede Aç
                 <svg viewBox="0 0 14 14" aria-hidden="true">
                   <path

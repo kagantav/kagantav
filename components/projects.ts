@@ -34,6 +34,13 @@ export interface FeaturedProject {
   desktopMedia: ProjectMedia;
   mobileMedia: ProjectMedia;
   liveUrl: string | null;
+  /**
+   * false → the site sends X-Frame-Options/CSP that blocks embedding;
+   * CANLI İNCELE dives and then shows the "Yeni Sekmede Aç" card
+   * instead of mounting an iframe (Chrome renders an ugly error page
+   * otherwise). Default: embeddable.
+   */
+  liveEmbed?: boolean;
   caseUrl?: string | null;
   /** gold-family accent used for the scene glow + placeholder lighting */
   accentColor: string;
@@ -42,15 +49,18 @@ export interface FeaturedProject {
 
 export const FEATURED_PROJECTS: FeaturedProject[] = [
   {
-    id: "aurelia-finance",
-    name: "Aurelia Finance",
-    category: "Fintech Dashboard",
+    id: "miyavhav",
+    name: "MiyavHav",
+    category: "E-Ticaret — Pet Shop",
     description:
-      "Real-time portfolio analytics with institutional-grade charting, alerts and multi-currency accounts — built for speed and clarity.",
-    stack: ["Next.js", "TypeScript", "PostgreSQL", "WebSockets"],
-    desktopMedia: { type: "image", src: null },
-    mobileMedia: { type: "image", src: null },
-    liveUrl: DEV_PLACEHOLDER_LIVE_URL, // TEMP dev-only
+      "Kedi ve köpek sahipleri için premium pet ürünleri mağazası — sezonluk koleksiyonlar, avantajlı paketler ve animasyonlu, akıcı bir alışveriş deneyimi.",
+    // TODO(kağan): gerçek stack'i doğrula — şimdilik nötr etiketler
+    stack: ["E-Ticaret", "UI/UX", "Animasyon", "SEO"],
+    desktopMedia: { type: "video", src: "/assets/projects/miyavhav/desktop.mp4" },
+    mobileMedia: { type: "video", src: "/assets/projects/miyavhav/mobile.mp4" },
+    // site X-Frame-Options: DENY gönderiyor → gömülü önizleme kapalı
+    liveUrl: "https://miyavhavtr.com",
+    liveEmbed: false,
     caseUrl: null,
     accentColor: "#d8a94f",
     year: "2026",
