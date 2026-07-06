@@ -23,7 +23,7 @@ export const swScroll = {
   frozen: false,
 };
 
-/* dev-only: expose the bus for debugging/automated verification */
-if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
+/* expose the bus for debugging/automated verification (harmless) */
+if (typeof window !== "undefined") {
   (window as unknown as { __swScroll?: typeof swScroll }).__swScroll = swScroll;
 }

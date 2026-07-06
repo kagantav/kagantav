@@ -26,6 +26,11 @@ gsap.registerPlugin(ScrollTrigger);
 
 const N = FEATURED_PROJECTS.length;
 const TRANSITIONS = N - 1;
+
+/** bumped with every motion-fix round — printed to the console and shown
+ *  in the ?swdebug HUD so there is never any doubt WHICH code is running
+ *  in the browser being tested */
+const BUILD_TAG = "r5-stallproof-06.07";
 const pad = (n: number) => String(n + 1).padStart(2, "0");
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
@@ -345,19 +350,37 @@ export default function SelectedWork() {
     return () => window.clearTimeout(t);
   }, [live, frameState]);
 
-  /* dev-only continuity inspector — visit with ?swdebug to enable */
+  /* continuity inspector — visit with ?swdebug to enable (works in prod
+     too so real-machine recordings carry the numbers with them) */
   const [dbg, setDbg] = useState<{
     t: number;
     d: number;
     k: number;
     lt: number;
+    fps: number;
+    live: number;
+    fz: boolean;
   } | null>(null);
   useEffect(() => {
-    if (
-      process.env.NODE_ENV !== "development" ||
-      !window.location.search.includes("swdebug")
-    )
-      return;
+    console.info(`[KT] Selected Work build ${BUILD_TAG}`);
+    if (!window.location.search.includes("swdebug")) return;
+    /* rolling fps counter — frame drops are the prime suspect for any
+       perceived stutter, so the HUD must show them */
+    let frames = 0;
+    let last = performance.now();
+    let fps = 0;
+    let raf = 0;
+    const loop = () => {
+      frames++;
+      const now = performance.now();
+      if (now - last >= 500) {
+        fps = Math.round((frames * 1000) / (now - last));
+        frames = 0;
+        last = now;
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
     const id = window.setInterval(() => {
       const f = Math.min(
         swScroll.smooth * TRANSITIONS,
@@ -369,9 +392,15 @@ export default function SelectedWork() {
         d: swScroll.smooth,
         k: kk,
         lt: f - kk,
+        fps,
+        live: swScroll.live,
+        fz: swScroll.frozen,
       });
     }, 120);
-    return () => window.clearInterval(id);
+    return () => {
+      window.clearInterval(id);
+      cancelAnimationFrame(raf);
+    };
   }, []);
 
   /* pair A carries even projects, pair B odd — recycled alternately */
@@ -878,14 +907,18 @@ export default function SelectedWork() {
       {/* dev-only continuity inspector (?swdebug) */}
       {dbg && (
         <div className={styles.debugHud}>
+          <span>{BUILD_TAG}</span>
+          <span>fps {dbg.fps}</span>
           <span>target {dbg.t.toFixed(4)}</span>
           <span>damped {dbg.d.toFixed(4)}</span>
           <span>
             seg {dbg.k} · lt {dbg.lt.toFixed(3)}
           </span>
           <span>
-            A[{dbg.k % 2 === 0 ? "OUT" : "IN"}] #{pad(aIdx)} — B[
-            {dbg.k % 2 === 0 ? "IN" : "OUT"}] #{pad(bIdx)}
+            live {dbg.live.toFixed(3)} {dbg.fz ? "FROZEN" : ""}
+          </span>
+          <span>
+            A #{pad(aIdx)} — B #{pad(bIdx)}
           </span>
         </div>
       )}
