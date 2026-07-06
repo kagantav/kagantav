@@ -367,11 +367,12 @@ function makePlaceholderTexture(project: FeaturedProject, idx: number) {
   return t;
 }
 
-/* Screen fit — calibration constants. The content sits INSIDE the
-   panel with an even, thin black bezel all around (overscanning past
-   the opening swallowed the bezel and pushed plane edges beyond the
-   lid glass, which showed as stray hairlines). */
-const SCREEN_OVERSCAN = 1.0;
+/* Screen fit — the GLB's "screen" mesh spans the ENTIRE lid face, so
+   content mapped to it touches the aluminum edge and reads as a
+   sticker. The actual display opening is an inset of that glass: the
+   glossy-black panel underneath shows through the remaining ring as a
+   real bezel. Shared by the 3D plane AND the DOM overlay quad. */
+export const SCREEN_INSET = 0.93;
 const SCREEN_Y_BIAS = 0; // × screen height, + = up
 
 /* Rounded-corner alpha mask for the display: the MacBook's screen has
@@ -497,8 +498,8 @@ function ScreenPlane({
     } else v.pause();
   }, [settled, tex]);
 
-  const w = rig.screenWorld.w * SCREEN_OVERSCAN;
-  const h = rig.screenWorld.h * SCREEN_OVERSCAN;
+  const w = rig.screenWorld.w * SCREEN_INSET;
+  const h = rig.screenWorld.h * SCREEN_INSET;
   const yOff = rig.screenWorld.h * SCREEN_Y_BIAS;
 
   return createPortal(
@@ -853,9 +854,9 @@ function CameraRig({ reg }: { reg: Registry }) {
         best.rig.anchor.updateWorldMatrix(true, false);
         best.rig.anchor.getWorldPosition(v.aPos);
         best.rig.anchor.getWorldQuaternion(v.q);
-        /* world half-extents of the screen plane (overscan = 1) */
-        const sw = best.rig.screenWorld.w / 2;
-        const sh = best.rig.screenWorld.h / 2;
+        /* world half-extents of the CONTENT plane (inset display) */
+        const sw = (best.rig.screenWorld.w * SCREEN_INSET) / 2;
+        const sh = (best.rig.screenWorld.h * SCREEN_INSET) / 2;
         /* NOTE: anchor axes are uniform-scaled by StageRoot — recover
            the scale from the world matrix column length */
         const scl = best.rig.anchor.matrixWorld.elements[0] ** 2 +
