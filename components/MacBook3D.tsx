@@ -367,6 +367,13 @@ function makePlaceholderTexture(project: FeaturedProject, idx: number) {
   return t;
 }
 
+/* Screen fit — the content plane slightly OVERSCANS the measured LCD
+   opening (real screens run content flush to the bezel; the previous
+   exact fit left a dark strip at the bottom and read as "pasted on"),
+   with a tiny downward bias to balance the top/bottom margins. */
+const SCREEN_OVERSCAN = 1.045;
+const SCREEN_Y_BIAS = -0.012; // × screen height, + = up
+
 /* Rounded-corner alpha mask for the display: the MacBook's screen has
    rounded top corners, and a rectangular texture pokes past them on
    light content. Cached once; used as alphaMap by every screen. */
@@ -375,7 +382,7 @@ function getScreenMask() {
   if (screenMask) return screenMask;
   const W = 512;
   const H = 334;
-  const r = Math.round(H * 0.055);
+  const r = Math.round(H * 0.038);
   const c = document.createElement("canvas");
   c.width = W;
   c.height = H;
@@ -388,6 +395,52 @@ function getScreenMask() {
   g.fill();
   screenMask = new THREE.CanvasTexture(c);
   return screenMask;
+}
+
+/* Glass overlay — subtle edge vignette + a faint diagonal sheen, baked
+   into one texture and clipped by the same rounded rect. This is what
+   sells "a real display" instead of a flat texture: the panel picks up
+   a whisper of ambient reflection and darkens toward the bezel. */
+let screenGlass: THREE.CanvasTexture | null = null;
+function getScreenGlass() {
+  if (screenGlass) return screenGlass;
+  const W = 1024;
+  const H = 668;
+  const r = Math.round(H * 0.038);
+  const c = document.createElement("canvas");
+  c.width = W;
+  c.height = H;
+  const g = c.getContext("2d")!;
+  g.clearRect(0, 0, W, H);
+  g.beginPath();
+  g.roundRect(0, 0, W, H, r);
+  g.clip();
+  /* edge vignette */
+  const vg = g.createRadialGradient(
+    W / 2, H / 2, H * 0.42,
+    W / 2, H / 2, H * 0.95
+  );
+  vg.addColorStop(0, "rgba(0,0,0,0)");
+  vg.addColorStop(1, "rgba(0,0,0,0.30)");
+  g.fillStyle = vg;
+  g.fillRect(0, 0, W, H);
+  /* diagonal sheen sweeping from the upper-left */
+  const sh = g.createLinearGradient(0, 0, W * 0.9, H);
+  sh.addColorStop(0, "rgba(255,255,255,0.10)");
+  sh.addColorStop(0.22, "rgba(255,255,255,0.035)");
+  sh.addColorStop(0.45, "rgba(255,255,255,0)");
+  sh.addColorStop(1, "rgba(255,255,255,0)");
+  g.fillStyle = sh;
+  g.fillRect(0, 0, W, H);
+  /* hairline inner edge catching light at the very top */
+  const top = g.createLinearGradient(0, 0, 0, H * 0.05);
+  top.addColorStop(0, "rgba(255,255,255,0.10)");
+  top.addColorStop(1, "rgba(255,255,255,0)");
+  g.fillStyle = top;
+  g.fillRect(0, 0, W, H * 0.05);
+  screenGlass = new THREE.CanvasTexture(c);
+  screenGlass.colorSpace = THREE.SRGBColorSpace;
+  return screenGlass;
 }
 
 /**
@@ -410,12 +463,14 @@ function ScreenPlane({
   idx,
   settled,
   matRef,
+  glassRef,
 }: {
   rig: MacRig;
   project: FeaturedProject;
   idx: number;
   settled: boolean;
   matRef: MutableRefObject<THREE.MeshBasicMaterial | null>;
+  glassRef: MutableRefObject<THREE.MeshBasicMaterial | null>;
 }) {
   const tex = useMemo(() => {
     const m = project.desktopMedia;
@@ -448,18 +503,36 @@ function ScreenPlane({
     } else v.pause();
   }, [settled, tex]);
 
+  const w = rig.screenWorld.w * SCREEN_OVERSCAN;
+  const h = rig.screenWorld.h * SCREEN_OVERSCAN;
+  const yOff = rig.screenWorld.h * SCREEN_Y_BIAS;
+
   return createPortal(
-    <mesh position={[0, 0, 0.0006]}>
-      <planeGeometry args={[rig.screenWorld.w, rig.screenWorld.h]} />
-      <meshBasicMaterial
-        ref={matRef}
-        map={tex}
-        alphaMap={getScreenMask()}
-        transparent
-        opacity={0}
-        toneMapped={false}
-      />
-    </mesh>,
+    <>
+      <mesh position={[0, yOff, 0.0006]}>
+        <planeGeometry args={[w, h]} />
+        <meshBasicMaterial
+          ref={matRef}
+          map={tex}
+          alphaMap={getScreenMask()}
+          transparent
+          opacity={0}
+          toneMapped={false}
+        />
+      </mesh>
+      {/* glass layer: vignette + sheen riding just above the content */}
+      <mesh position={[0, yOff, 0.0012]}>
+        <planeGeometry args={[w, h]} />
+        <meshBasicMaterial
+          ref={glassRef}
+          map={getScreenGlass()}
+          transparent
+          opacity={0}
+          toneMapped={false}
+          depthWrite={false}
+        />
+      </mesh>
+    </>,
     rig.anchor
   );
 }
@@ -494,6 +567,7 @@ function MacUnit({
   const group = useRef<THREE.Group>(null);
   const rim = useRef<THREE.PointLight>(null);
   const screenMat = useRef<THREE.MeshBasicMaterial>(null);
+  const glassMat = useRef<THREE.MeshBasicMaterial>(null);
   const phase = unit === "A" ? 0 : 2.4;
 
   useEffect(() => {
@@ -542,6 +616,7 @@ function MacUnit({
     if (screenMat.current) {
       const on = smooth(clamp01((lidT - 0.72) / 0.26));
       screenMat.current.opacity = on * opacity;
+      if (glassMat.current) glassMat.current.opacity = on * opacity;
     }
 
     /* warm rim light follows presence */
@@ -569,6 +644,7 @@ function MacUnit({
         idx={projectIdx}
         settled={settledIdx === projectIdx}
         matRef={screenMat}
+        glassRef={glassMat}
       />
     </group>
   );
