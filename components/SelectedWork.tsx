@@ -91,7 +91,7 @@ function quadMatrix3d(
 /** bumped with every motion-fix round — printed to the console and shown
  *  in the ?swdebug HUD so there is never any doubt WHICH code is running
  *  in the browser being tested */
-const BUILD_TAG = "r18-bilitro-06.07";
+const BUILD_TAG = "r19-firstframe-06.07";
 const pad = (n: number) => String(n + 1).padStart(2, "0");
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
@@ -480,6 +480,9 @@ export default function SelectedWork() {
     if (settled >= 0) {
       setOverlayProj(settled);
       overlayProjRef.current = settled;
+      /* new settle = new media epoch: every screen starts its clip
+         from the FIRST frame, all devices share the same phase */
+      swScroll.mediaEpoch = performance.now();
     }
   }, [settled]);
   const overlayIdx = swScroll.liveIdx >= 0 ? swScroll.liveIdx : overlayProj;
@@ -513,11 +516,14 @@ export default function SelectedWork() {
     ].forEach(({ el, idx }) => {
       el?.querySelectorAll("video").forEach((v) => {
         if (idx === settled) {
-          /* shared wall-clock phase — keeps the phone loop in sync with
-             the laptop's video texture regardless of load timing */
+          /* shared settle-epoch phase — starts from the first frame and
+             keeps the phone in sync with the laptop's screens */
           syncVideoPhase(v);
           v.play().catch(() => {});
-        } else v.pause();
+        } else {
+          v.pause();
+          v.currentTime = 0;
+        }
       });
     });
   }, [settled, aIdx, bIdx]);

@@ -30,6 +30,13 @@ export const swScroll = {
    */
   zoom: { ox: 0, oy: 0, tx: 0, ty: 0, s: 1 },
   /**
+   * performance.now() timestamp of the moment the current project
+   * settled. All screen videos take their playhead from this shared
+   * epoch — each presentation STARTS FROM ITS FIRST FRAME on arrival,
+   * and the laptop + phone stay in exactly the same loop phase.
+   */
+  mediaEpoch: 0,
+  /**
    * The settled MacBook's screen quad projected to canvas CSS pixels,
    * updated every rendered frame. The DOM screen overlay (a real
    * <video>, compositor-smooth like the phone) is matrix3d-mapped onto

@@ -601,14 +601,16 @@ function getScreenGlass() {
 }
 
 /**
- * All project screen videos derive their playhead from ONE wall clock,
- * so the laptop and the phone (and any later-loading texture) are
- * always in the same loop phase no matter when each starts playing.
+ * All screen videos derive their playhead from the SHARED settle epoch
+ * (swScroll.mediaEpoch): every arrival starts the presentation from its
+ * first frame, and the laptop + phone stay in the same loop phase no
+ * matter when each element starts playing.
  */
 export function syncVideoPhase(v: HTMLVideoElement) {
   const apply = () => {
     if (v.duration && isFinite(v.duration))
-      v.currentTime = (performance.now() / 1000) % v.duration;
+      v.currentTime =
+        ((performance.now() - swScroll.mediaEpoch) / 1000) % v.duration;
   };
   if (v.readyState >= 1) apply();
   else v.addEventListener("loadedmetadata", apply, { once: true });
@@ -691,21 +693,39 @@ function ScreenPlane({
         v.addEventListener("canplay", tryPlay, { once: true });
         v.load();
       }
-    } else v.pause();
+    } else {
+      v.pause();
+      /* the incoming/outgoing transit frame is the presentation's
+         FIRST frame, not wherever playback happened to stop */
+      v.currentTime = 0;
+    }
   }, [settled, tex]);
 
   /* Chromium does not reliably fire frame callbacks for off-DOM video
      elements, so the VideoTexture never marked itself dirty — the 3D
      screen stayed black while the video was audibly "playing". Mark the
-     texture dirty on every rendered frame while the video has data
-     (and at least once for the paused transit frame). */
-  const uploadedOnce = useRef(false);
+     texture dirty on every rendered frame while playing, and once per
+     seek/load while paused (transit frame). */
+  const texDirty = useRef(true);
+  useEffect(() => {
+    const v = (tex as THREE.Texture & { __video?: HTMLVideoElement }).__video;
+    if (!v) return;
+    const mark = () => {
+      texDirty.current = true;
+    };
+    v.addEventListener("seeked", mark);
+    v.addEventListener("loadeddata", mark);
+    return () => {
+      v.removeEventListener("seeked", mark);
+      v.removeEventListener("loadeddata", mark);
+    };
+  }, [tex]);
   useFrame(() => {
     const v = (tex as THREE.Texture & { __video?: HTMLVideoElement }).__video;
     if (!v) return;
-    if (v.readyState >= 2 && (!v.paused || !uploadedOnce.current)) {
+    if (v.readyState >= 2 && (!v.paused || texDirty.current)) {
       tex.needsUpdate = true;
-      uploadedOnce.current = true;
+      texDirty.current = false;
     }
   });
 
