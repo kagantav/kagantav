@@ -14,6 +14,7 @@ import {
   ContactShadows,
   Environment,
   Lightformer,
+  MeshReflectorMaterial,
 } from "@react-three/drei";
 import { SkeletonUtils } from "three-stdlib";
 import gsap from "gsap";
@@ -32,7 +33,6 @@ const LID_CLOSED = -0.1;
 const LID_OPEN = -Math.PI / 2 - 0.14;
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const smooth = (t: number) => t * t * (3 - 2 * t);
 /** smootherstep — zero 1st AND 2nd derivative at both ends */
 const smoother = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
@@ -52,12 +52,10 @@ function seg(p: number) {
 /* ════════════════════════════════════════════════
    Cinematic pose keys (world units around the showcase center)
    ════════════════════════════════════════════════ */
-const P_IN0 = { x: -5.1, y: -0.15, z: -1.8, ry: -0.55, rx: -0.05, rz: -0.025, s: 0.79 };
 /** THE canonical settled pose — the single source for "on stage".
  *  rx tips the WHOLE unit forward (lid angle untouched) so the camera
  *  looks slightly down onto the deck and the keyboard reads clearly. */
 const P_SHOW = { x: 0, y: 0.05, z: 0, ry: 0.08, rx: 0.13, rz: 0, s: 1 };
-const P_OUT1 = { x: 5.6, y: 0.1, z: -2.2, ry: 0.55, rx: 0.06, rz: 0.025, s: 0.77 };
 
 export interface UnitPose {
   x: number;
@@ -89,47 +87,33 @@ export interface UnitPose {
  * zero at both ends), so no visual-state handoff can ever produce a jump.
  * A unit's project assignment may only change while |d| ≥ 1 (invisible).
  */
+/* DÖNEN VİTRİN (r22): units live on an invisible turntable. Scroll
+   rotates the ring; the unit at angle 0 faces the camera and IS P_SHOW
+   by construction (sin0=0, cos0=1 → every ring term vanishes at d=0),
+   so the overlay quad, live dive and boundary assertion are untouched.
+   Neighbours stay on stage as dark graphite silhouettes (shade, not
+   opacity) — the showcase-archive look approved in the lab. */
+const RING_R = 4.2;
+const RING_STEP = (Math.PI * 2) / N;
+
 function poseFromDistance(d: number): UnitPose {
-  /* STAGGERED choreography: the outgoing unit leaves in the FIRST half
-     of the transition and is fully gone by ~52%; the incoming unit
-     enters in the SECOND half (travel 42% → 90%). They never share the
-     stage at meaningful opacity — no more mid-air collision. */
-  if (d < 0) {
-    /* incoming from stage-left — second half of the transition */
-    const lt = clamp01(d + 1);
-    const tr = clamp01((lt - 0.42) / 0.48);
-    const e = easeOut(tr); // monotonic, no overshoot
-    return {
-      x: lerp(P_IN0.x, P_SHOW.x, e),
-      y: lerp(P_IN0.y, P_SHOW.y, e) + 0.22 * bump(e),
-      z: lerp(P_IN0.z, P_SHOW.z, e) - 0.15 * bump(e),
-      ry:
-        lerp(P_IN0.ry, P_SHOW.ry, e) +
-        0.012 * (1 - smoother(clamp01((lt - 0.8) / 0.2))),
-      rx: lerp(P_IN0.rx, P_SHOW.rx, e),
-      rz: lerp(P_IN0.rz, P_SHOW.rz, e),
-      s: lerp(P_IN0.s, P_SHOW.s, e),
-      opacity: smoother(clamp01(tr / 0.3)),
-      lidT: 0.12 + 0.88 * easeOut(clamp01((lt - 0.52) / 0.34)),
-      presence: smoother(clamp01((lt - 0.52) / 0.34)),
-    };
-  }
-  /* settled (d = 0) flowing into the outgoing curve — first half */
-  const lt = clamp01(d);
-  const tr = clamp01((lt - 0.06) / 0.5);
-  const e = easeIO(tr);
+  const a = -d * RING_STEP; // 0 = front/settled; next project waits stage-right
+  const front = Math.cos(a);
+  const w = clamp01((front - 0.15) / 0.85);
+  const w3 = w * w * w;
   return {
-    x: lerp(P_SHOW.x, P_OUT1.x, e),
-    y: lerp(P_SHOW.y, P_OUT1.y, e) + 0.18 * bump(e),
-    z: lerp(P_SHOW.z, P_OUT1.z, e) - 0.2 * bump(e),
-    ry: lerp(P_SHOW.ry, P_OUT1.ry, easeIO(clamp01(tr * 1.12))),
-    rx: lerp(P_SHOW.rx, P_OUT1.rx, e),
-    rz: lerp(P_SHOW.rz, P_OUT1.rz, e),
-    s: lerp(P_SHOW.s, P_OUT1.s, e),
-    opacity: 1 - smoother(clamp01((lt - 0.22) / 0.3)),
-    /* lid closes during the (short) exit while the screen still lives */
-    lidT: lt < 0.14 ? 1 : 1 - 0.9 * smoother(clamp01((lt - 0.14) / 0.34)),
-    presence: 1 - smoother(clamp01((lt - 0.12) / 0.3)),
+    x: Math.sin(a) * RING_R + P_SHOW.x,
+    y: P_SHOW.y,
+    z: (front - 1) * RING_R + P_SHOW.z,
+    ry: a + P_SHOW.ry,
+    rx: P_SHOW.rx,
+    rz: P_SHOW.rz,
+    s: P_SHOW.s,
+    /* far-side units fade out entirely (they'd read through the mirror
+       glare otherwise); flank units stay fully opaque but dark */
+    opacity: smoother(clamp01((front + 0.28) / 0.32)),
+    lidT: 0.16 + 0.84 * easeOut(clamp01((front - 0.45) / 0.5)),
+    presence: w3,
   };
 }
 
@@ -144,6 +128,8 @@ interface MacRig {
   screenWorld: { w: number; h: number };
   fadeMats: THREE.Material[];
   setOpacity: (v: number) => void;
+  /** 1 = full colour, 0 = pitch-black silhouette (opaque, not glassy) */
+  setShade: (v: number) => void;
 }
 
 function useMacRig(): MacRig {
@@ -229,6 +215,16 @@ function useMacRig(): MacRig {
         // every other material: clone per unit so cross-fading two
         // MacBooks never bleeds between instances
         const cloned = mat.clone();
+        /* the GLB ships materials with real transmission — three runs an
+           extra full-scene transmission pass for them EVERY frame, and
+           that pass corrupts clear-color state under nested renders
+           (mirror floor). Dark stage needs no true refraction: kill it. */
+        const ph = cloned as THREE.MeshPhysicalMaterial;
+        if (ph.transmission !== undefined && ph.transmission > 0) {
+          ph.transmission = 0;
+          ph.transparent = true;
+          ph.opacity = Math.min(ph.opacity, 0.5);
+        }
         if (Array.isArray(mesh.material)) mesh.material[mi] = cloned;
         else mesh.material = cloned;
       });
@@ -237,6 +233,7 @@ function useMacRig(): MacRig {
     // collect every material for the whole-device fade (shared black/glass
     // panels included — they're created per-rig above)
     const seen = new Set<THREE.Material>();
+    const colorMats: { m: THREE.Material & { color?: THREE.Color }; base: THREE.Color }[] = [];
     root.traverse((o) => {
       const mesh = o as THREE.Mesh;
       if (!mesh.isMesh) return;
@@ -245,6 +242,8 @@ function useMacRig(): MacRig {
           if (!m || seen.has(m)) return;
           seen.add(m);
           fadeMats.push(m);
+          const cm = m as THREE.Material & { color?: THREE.Color };
+          if (cm.color) colorMats.push({ m: cm, base: cm.color.clone() });
         }
       );
     });
@@ -292,7 +291,12 @@ function useMacRig(): MacRig {
       }
     };
 
-    return { root, lid, anchor, screenWorld, fadeMats, setOpacity };
+    const setShade = (v: number) => {
+      const t = clamp01(v);
+      for (const { m, base } of colorMats) m.color!.copy(base).multiplyScalar(t);
+    };
+
+    return { root, lid, anchor, screenWorld, fadeMats, setOpacity, setShade };
   }, [scene]);
 }
 
@@ -821,7 +825,7 @@ function MacUnit({
   settledIdx,
   reg,
 }: {
-  unit: "A" | "B";
+  unit: string;
   projectIdx: number;
   settledIdx: number;
   reg: Registry;
@@ -832,7 +836,7 @@ function MacUnit({
   const screenMat = useRef<THREE.MeshBasicMaterial>(null);
   const glassMat = useRef<THREE.MeshBasicMaterial>(null);
   const chromeMat = useRef<THREE.MeshBasicMaterial>(null);
-  const phase = unit === "A" ? 0 : 2.4;
+  const phase = projectIdx * 1.7;
 
   useEffect(() => {
     reg.current[unit] = { group: group.current, rig, projectIdx };
@@ -871,6 +875,9 @@ function MacUnit({
     g.rotation.set(pose.rx, pose.ry, pose.rz);
     g.scale.setScalar(pose.s);
     rig.setOpacity(opacity);
+    /* ring shade: the front unit lives in champagne-graphite light,
+       flank units sink into shadow as opaque silhouettes */
+    rig.setShade(0.09 + 0.55 * pose.presence);
 
     if (rig.lid)
       rig.lid.rotation.x = LID_CLOSED + (LID_OPEN - LID_CLOSED) * clamp01(lidT);
@@ -1251,6 +1258,27 @@ function StageRoot({ children }: { children: React.ReactNode }) {
       scale={portrait ? 0.62 : 1}
     >
       {children}
+      {/* simsiyah ayna zemin: laptoplar loş yansımalarının üstünde
+          süzülür (lab'da onaylanan keynote görünümü). Portrede kapalı —
+          mobil GPU'da ikinci sahne render'ına gerek yok. */}
+      {!portrait && (
+        <mesh rotation-x={-Math.PI / 2} position={[0, -0.02, 0]}>
+          <circleGeometry args={[15, 48]} />
+          <MeshReflectorMaterial
+            mirror={0.5}
+            resolution={512}
+            blur={[260, 60]}
+            mixBlur={0.9}
+            mixStrength={1.4}
+            depthScale={0}
+            color="#0a0908"
+            metalness={0.35}
+            roughness={1}
+            transparent
+            opacity={0.92}
+          />
+        </mesh>
+      )}
     </group>
   );
 }
@@ -1265,6 +1293,11 @@ export default function MacBook3D({
   settledIdx: number;
 }) {
   const reg = useRef<Record<string, UnitHandle>>({});
+  /* r22: units are fixed to their projects on the ring — the old A/B
+     slot-recycling props are kept in the signature so SelectedWork
+     stays untouched, but they no longer drive anything */
+  void aIdx;
+  void bIdx;
 
   return (
     <Canvas
@@ -1282,6 +1315,8 @@ export default function MacBook3D({
         <ambientLight intensity={0.5} color="#fff0da" />
         <directionalLight position={[5, 7, 5]} intensity={1.2} color="#ffe6b8" />
         <directionalLight position={[-6, 3, 2]} intensity={0.4} color="#d8a94f" />
+        {/* altın kontra: gölgedeki kanat ünitelerinin kenarını çizer */}
+        <directionalLight position={[-6, 2.4, -3]} intensity={0.8} color="#e8b96a" />
 
         <Environment resolution={64}>
           <Lightformer intensity={1.6} color="#f3d791" position={[4, 4, 4]} scale={[7, 3, 1]} />
@@ -1290,8 +1325,19 @@ export default function MacBook3D({
         </Environment>
 
         <StageRoot>
-          <MacUnit unit="A" projectIdx={aIdx} settledIdx={settledIdx} reg={reg} />
-          <MacUnit unit="B" projectIdx={bIdx} settledIdx={settledIdx} reg={reg} />
+          {/* DÖNER VİTRİN: her projenin kendi ünitesi halkada sabit —
+              slot geri dönüşümü yok; arkaya dönenler görünmez olur
+              (opacity→0 → render listesinden çıkar), sahnede tipik
+              olarak ön + iki kanat kalır */}
+          {FEATURED_PROJECTS.map((_, i) => (
+            <MacUnit
+              key={i}
+              unit={String(i)}
+              projectIdx={i}
+              settledIdx={settledIdx}
+              reg={reg}
+            />
+          ))}
           {/* frames={1}: the shadow is baked ONCE — re-rendering the
               scene's depth EVERY frame was the single biggest per-frame
               GPU cost. A soft static pool under the stage center is
