@@ -30,7 +30,9 @@ const PHONE_MODEL_URL = "/assets/iphone/iphone_16_-_free.glb";
 const PHONE_WIDTH = 0.76; // world units — a companion beside the mac
 const PHONE_SCREEN_MESH = "Object_18"; // flat display plane in this GLB
 const PHONE_SCREEN_INSET = 0.95; // overlay sits WITHIN the display, no bezel bleed
-const PHONE_POS = { x: 1.55, y: 0.5, z: 2.05 };
+/* front-right of the hero, LOW so it stands beside the keyboard and never
+   covers the laptop's screen (the DOM overlays would otherwise fight) */
+const PHONE_POS = { x: 2.05, y: 0.18, z: 2.15 };
 const N = FEATURED_PROJECTS.length;
 const TRANSITIONS = N - 1;
 
@@ -959,6 +961,7 @@ interface PhoneRig {
   anchor: THREE.Group;
   /** LOCAL display-plane dims; CameraRig recovers the world scale */
   screenWorld: { w: number; h: number };
+  setOpacity: (v: number) => void;
 }
 
 function usePhoneRig(): PhoneRig {
@@ -1000,32 +1003,34 @@ function usePhoneRig(): PhoneRig {
       });
     }
 
-    /* the raw model's titanium reads teal/green; tint the body toward a
-       graphite space-black that fits the black-gold stage (once per unique
-       material so shared mats don't over-darken) */
-    const GRAPHITE = new THREE.Color("#3b3b40");
-    const tinted = new Set<THREE.Material>();
+    /* ONE shared graphite material for the whole body — far cheaper than
+       the GLB's 40+ MeshPhysicalMaterials (fewer shader/state changes per
+       frame → smoother scroll) and a clean space-black that fits the stage.
+       Transparent so the phone can fade out on transitions (come-and-go
+       like the laptops). The display gets its own black material. */
+    const bodyMat = new THREE.MeshStandardMaterial({
+      color: "#34343a",
+      metalness: 0.88,
+      roughness: 0.35,
+      transparent: true,
+    });
+    const screenMat = new THREE.MeshStandardMaterial({
+      color: "#050505",
+      metalness: 0.35,
+      roughness: 0.34,
+      transparent: true,
+    });
+    const fadeMats: THREE.Material[] = [bodyMat, screenMat];
     root.traverse((o) => {
       const m = o as THREE.Mesh;
-      if (!m.isMesh || m.name === PHONE_SCREEN_MESH) return;
-      (Array.isArray(m.material) ? m.material : [m.material]).forEach((mat) => {
-        const cm = mat as THREE.MeshStandardMaterial;
-        if (!cm || tinted.has(cm) || !cm.color) return;
-        tinted.add(cm);
-        cm.color.lerp(GRAPHITE, 0.72);
-      });
+      if (!m.isMesh) return;
+      m.material = m.name === PHONE_SCREEN_MESH ? screenMat : bodyMat;
     });
 
     const anchor = new THREE.Group();
     let screenWorld = { w: 0.5, h: 1 };
     if (screen) {
       const sm = screen as THREE.Mesh;
-      // pure-black display so it reads as an OFF screen behind the DOM overlay
-      sm.material = new THREE.MeshStandardMaterial({
-        color: "#050505",
-        roughness: 0.34,
-        metalness: 0.35,
-      });
       sm.geometry.computeBoundingBox();
       const bb = sm.geometry.boundingBox!;
       const dims = new THREE.Vector3();
@@ -1041,7 +1046,14 @@ function usePhoneRig(): PhoneRig {
       sm.parent?.add(anchor);
     }
 
-    return { root, anchor, screenWorld };
+    const setOpacity = (v: number) => {
+      const t = clamp01(v);
+      root.visible = t > 0.02; // fully faded → leave the render list (perf)
+      bodyMat.opacity = t;
+      screenMat.opacity = t;
+    };
+
+    return { root, anchor, screenWorld, setOpacity };
   }, [scene]);
 }
 
@@ -1075,16 +1087,26 @@ function Phone({
        reel (RISE-like), plus an idle float + pointer parallax. Frozen during
        the live dive so the dived scene never drifts. */
     const liveGate = 1 - clamp01(swScroll.live / 0.2);
-    const turn = (swScroll.smooth - 0.5) * 0.4; // ±0.2rad across the reel — clear 3D
+
+    /* COME-AND-GO with the reel (like the laptops): fully present when a
+       project is settled; slides down + back and fades out through a
+       transition; returns with the next project — whose mobile media has
+       already swapped while the phone was hidden, so no visible lag. */
+    const absPos = swScroll.smooth * (N - 1);
+    const dP = absPos - Math.round(absPos);
+    const show = 1 - smoother(clamp01((Math.abs(dP) - 0.06) / 0.24));
+    rig.setOpacity(show * liveGate);
+    const gone = 1 - show;
+
     g.rotation.set(
-      -0.05 + py * 0.06 * liveGate + Math.sin(t * 0.7) * 0.025 * liveGate,
-      -0.26 + turn + px * 0.1 * liveGate,
-      Math.sin(t * 0.5) * 0.016 * liveGate
+      -0.05 + py * 0.05 * liveGate + Math.sin(t * 0.7) * 0.022 * liveGate,
+      -0.24 + px * 0.09 * liveGate - gone * 0.55,
+      Math.sin(t * 0.5) * 0.015 * liveGate
     );
     g.position.set(
-      PHONE_POS.x + px * 0.06 * liveGate,
-      PHONE_POS.y + Math.sin(t * 0.9 + 1.3) * 0.05 * liveGate,
-      PHONE_POS.z
+      PHONE_POS.x + px * 0.05 * liveGate + gone * 0.35,
+      PHONE_POS.y + Math.sin(t * 0.9 + 1.3) * 0.045 * liveGate - gone * 0.95,
+      PHONE_POS.z - gone * 0.7
     );
   });
 
