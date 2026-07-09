@@ -72,6 +72,31 @@
   overflow: clip;
 }
 
+/* premium black-gold reference-stage backdrop, behind everything.
+   Sits under the transparent 3D canvas; a top fade blends it into the
+   page background so the pinned stage has no hard seam. */
+.sectionBg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: url("/assets/ref-section-bg.png") center bottom / cover no-repeat;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #000 18%,
+    #000 88%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #000 18%,
+    #000 88%,
+    transparent 100%
+  );
+}
+
 /* accent pool behind the devices — animated via --accent */
 .glow {
   --accent: #d8a94f;
