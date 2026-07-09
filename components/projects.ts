@@ -89,8 +89,8 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
       "Uzm. Dr. Cem Akman'ın medikal estetik kliniği için kurumsal tanıtım sitesi — uygulama vitrini, online randevu akışı ve güven veren, ferah bir hasta deneyimi.",
     // TODO(kağan): gerçek stack'i teyit et
     stack: ["Web Tasarım", "SEO", "Randevu Sistemi"],
-    desktopMedia: { type: "image", src: "/assets/projects/dr-cem-akman/desktop.png" },
-    mobileMedia: { type: "image", src: "/assets/projects/dr-cem-akman/mobile.png" },
+    desktopMedia: { type: "image", src: "/assets/projects/dr-cem-akman/desktop.jpg" },
+    mobileMedia: { type: "image", src: "/assets/projects/dr-cem-akman/mobile.jpg" },
     // X-Frame-Options: SAMEORIGIN → gömülü önizleme kapalı
     liveUrl: "https://drcemakman.com",
     liveEmbed: false,
