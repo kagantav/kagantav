@@ -51,6 +51,10 @@ const smooth5 = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
    ratio); matrix3d maps this rect onto the projected 3D screen quad */
 const OV_W = 1600;
 const OV_H = 1040;
+/* phone overlay source rect — portrait, matches the mobile capture ratio
+   and the GLB display aspect (~0.46) so nothing is distorted */
+const PHONE_OV_W = 780;
+const PHONE_OV_H = 1688;
 
 /* ── 4-point perspective mapping (projective transform) ──
    Maps the (0,0)-(w,0)-(w,h)-(0,h) rect onto an arbitrary quad.
@@ -108,7 +112,7 @@ function quadMatrix3d(
 /** bumped with every motion-fix round — printed to the console and shown
  *  in the ?swdebug HUD so there is never any doubt WHICH code is running
  *  in the browser being tested */
-const BUILD_TAG = "r32-crispphone-09.07";
+const BUILD_TAG = "r33-phone3d-09.07";
 const pad = (n: number) => String(n + 1).padStart(2, "0");
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
@@ -272,6 +276,8 @@ export default function SelectedWork() {
   const liveBtnRef = useRef<HTMLButtonElement>(null);
   const screenOvRef = useRef<HTMLDivElement>(null);
   const screenOvVideoRef = useRef<HTMLVideoElement>(null);
+  const phoneOvRef = useRef<HTMLDivElement>(null);
+  const phoneOvVideoRef = useRef<HTMLVideoElement>(null);
   const savedScrollY = useRef(0);
   /** scroll progress frozen at live-enter; restored verbatim at exit */
   const frozenProg = useRef(0);
@@ -887,6 +893,35 @@ export default function SelectedWork() {
               if (vid && !vid.paused) vid.pause();
             }
           }
+
+          /* ── companion phone: crisp DOM <video>/<img> matrix3d-mapped onto
+             the 3D iPhone's projected display quad. The phone is persistent,
+             so the overlay stays lit while settled and dims across a
+             transition (media swaps while dimmed → no hard cut). ── */
+          const pov = phoneOvRef.current;
+          if (pov) {
+            const pq = swScroll.phoneQuad;
+            const absPos = swScroll.smooth * TRANSITIONS;
+            const dP = absPos - Math.round(absPos);
+            const settleP = 1 - clamp01((Math.abs(dP) - 0.12) / 0.22);
+            const a =
+              (pq.on ? 1 : 0) * settleP * (1 - clamp01(swScroll.live / 0.08));
+            const pvid = phoneOvVideoRef.current;
+            if (a > 0.001) {
+              pov.style.opacity = String(a);
+              pov.style.transform = quadMatrix3d(
+                PHONE_OV_W, PHONE_OV_H,
+                pq.x0, pq.y0, pq.x1, pq.y1, pq.x2, pq.y2, pq.x3, pq.y3
+              );
+              if (pvid && pvid.paused && a > 0.5) {
+                syncVideoPhase(pvid);
+                pvid.play().catch(() => {});
+              }
+            } else {
+              pov.style.opacity = "0";
+              if (pvid && !pvid.paused) pvid.pause();
+            }
+          }
         };
         gsap.ticker.add(tick);
         applyVisual(0);
@@ -1093,6 +1128,34 @@ export default function SelectedWork() {
           </div>
         </div>
 
+        {/* companion iPhone screen overlay — crisp DOM media matrix3d-mapped
+            onto the 3D phone's projected display quad (native dpr) */}
+        <div className={styles.phoneOvHost} aria-hidden="true">
+          <div ref={phoneOvRef} className={styles.phoneOv}>
+            {(() => {
+              const m = FEATURED_PROJECTS[overlayProj]?.mobileMedia;
+              if (m?.type === "video" && m.src)
+                return (
+                  <video
+                    ref={phoneOvVideoRef}
+                    src={m.src}
+                    muted
+                    loop
+                    playsInline
+                    preload="auto"
+                  />
+                );
+              if (m?.type === "image" && m.src)
+                // eslint-disable-next-line @next/next/no-img-element
+                return <img src={m.src} alt="" />;
+              return null;
+            })()}
+            <i className={styles.phoneOvGlass} />
+          </div>
+        </div>
+
+        {/* old flat DOM phone — kept mounted (its refs guard applyVisual)
+            but hidden; the crisp 3D phone above replaces it */}
         <div className={styles.devices3d}>
           <div className={styles.devices} data-sw-devices>
             <DevicePair

@@ -22,6 +22,14 @@ import { FEATURED_PROJECTS, type FeaturedProject } from "./projects";
 import styles from "./SelectedWork.module.css";
 
 const MODEL_URL = "/assets/macbook-ultra-concept/source/MacBook Ultra.glb";
+
+/* companion iPhone — real 3D model beside the hero laptop. Its website
+   pixels come from a crisp DOM overlay (native dpr); the GLB gives real
+   volume + lighting + scroll-driven turn. */
+const PHONE_MODEL_URL = "/assets/iphone/iphone_16_-_free.glb";
+const PHONE_WIDTH = 0.76; // world units — a companion beside the mac
+const PHONE_SCREEN_MESH = "Object_18"; // flat display plane in this GLB
+const PHONE_POS = { x: 1.5, y: 0.52, z: 2.0 };
 const N = FEATURED_PROJECTS.length;
 const TRANSITIONS = N - 1;
 
@@ -942,10 +950,161 @@ function MacUnit({
 }
 
 /* ════════════════════════════════════════════════
+   Companion iPhone — real 3D GLB, crisp DOM screen overlay
+   ════════════════════════════════════════════════ */
+
+interface PhoneRig {
+  root: THREE.Object3D;
+  anchor: THREE.Group;
+  /** LOCAL display-plane dims; CameraRig recovers the world scale */
+  screenWorld: { w: number; h: number };
+}
+
+function usePhoneRig(): PhoneRig {
+  const { scene } = useGLTF(PHONE_MODEL_URL);
+
+  return useMemo(() => {
+    const root = SkeletonUtils.clone(scene);
+
+    // normalize: PHONE_WIDTH wide, centered on origin
+    const box = new THREE.Box3().setFromObject(root);
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    const s = PHONE_WIDTH / size.x;
+    root.scale.setScalar(s);
+    const box2 = new THREE.Box3().setFromObject(root);
+    const center = new THREE.Vector3();
+    box2.getCenter(center);
+    root.position.sub(center);
+
+    // locate the flat display mesh (by name, with a flat-front-plane fallback)
+    let screen: THREE.Mesh | null = null;
+    root.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (m.isMesh && m.name === PHONE_SCREEN_MESH) screen = m;
+    });
+    if (!screen) {
+      let best = 0;
+      root.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (!m.isMesh) return;
+        m.geometry.computeBoundingBox();
+        const d = new THREE.Vector3();
+        m.geometry.boundingBox!.getSize(d);
+        const a = [d.x, d.y, d.z].sort((p, q) => p - q);
+        if (a[0] <= a[2] * 0.05 && a[1] * a[2] > best) {
+          best = a[1] * a[2];
+          screen = m;
+        }
+      });
+    }
+
+    /* the raw model's titanium reads teal/green; tint the body toward a
+       graphite space-black that fits the black-gold stage (once per unique
+       material so shared mats don't over-darken) */
+    const GRAPHITE = new THREE.Color("#3b3b40");
+    const tinted = new Set<THREE.Material>();
+    root.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!m.isMesh || m.name === PHONE_SCREEN_MESH) return;
+      (Array.isArray(m.material) ? m.material : [m.material]).forEach((mat) => {
+        const cm = mat as THREE.MeshStandardMaterial;
+        if (!cm || tinted.has(cm) || !cm.color) return;
+        tinted.add(cm);
+        cm.color.lerp(GRAPHITE, 0.72);
+      });
+    });
+
+    const anchor = new THREE.Group();
+    let screenWorld = { w: 0.5, h: 1 };
+    if (screen) {
+      const sm = screen as THREE.Mesh;
+      // pure-black display so it reads as an OFF screen behind the DOM overlay
+      sm.material = new THREE.MeshStandardMaterial({
+        color: "#050505",
+        roughness: 0.34,
+        metalness: 0.35,
+      });
+      sm.geometry.computeBoundingBox();
+      const bb = sm.geometry.boundingBox!;
+      const dims = new THREE.Vector3();
+      bb.getSize(dims);
+      const c = new THREE.Vector3();
+      bb.getCenter(c);
+      const axes: ("x" | "y" | "z")[] = ["x", "y", "z"];
+      const normalAxis = axes.reduce((a, b) => (dims[a] < dims[b] ? a : b));
+      // portrait display: keep width = x, height = y (no max/min swap)
+      screenWorld = { w: dims.x, h: dims.y };
+      anchor.position.copy(c);
+      anchor.position[normalAxis] += dims[normalAxis] / 2 + 0.002; // toward camera
+      sm.parent?.add(anchor);
+    }
+
+    return { root, anchor, screenWorld };
+  }, [scene]);
+}
+
+interface PhoneHandle {
+  group: THREE.Group | null;
+  rig: PhoneRig;
+  projectIdx: number;
+}
+
+function Phone({
+  reg,
+  settledIdx,
+}: {
+  reg: MutableRefObject<PhoneHandle | null>;
+  settledIdx: number;
+}) {
+  const rig = usePhoneRig();
+  const group = useRef<THREE.Group>(null);
+
+  useEffect(() => {
+    reg.current = { group: group.current, rig, projectIdx: settledIdx };
+  });
+
+  useFrame((state) => {
+    const g = group.current;
+    if (!g) return;
+    const t = state.clock.elapsedTime;
+    const px = state.pointer.x;
+    const py = state.pointer.y;
+    /* scroll-driven 3D vibe — the phone turns gently as you move through the
+       reel (RISE-like), plus an idle float + pointer parallax. Frozen during
+       the live dive so the dived scene never drifts. */
+    const liveGate = 1 - clamp01(swScroll.live / 0.2);
+    const turn = (swScroll.smooth - 0.5) * 0.24; // gentle ±0.12rad across the reel
+    g.rotation.set(
+      -0.04 + py * 0.05 * liveGate + Math.sin(t * 0.7) * 0.02 * liveGate,
+      -0.2 + turn + px * 0.08 * liveGate,
+      Math.sin(t * 0.5) * 0.014 * liveGate
+    );
+    g.position.set(
+      PHONE_POS.x + px * 0.06 * liveGate,
+      PHONE_POS.y + Math.sin(t * 0.9 + 1.3) * 0.05 * liveGate,
+      PHONE_POS.z
+    );
+  });
+
+  return (
+    <group ref={group} position={[PHONE_POS.x, PHONE_POS.y, PHONE_POS.z]}>
+      <primitive object={rig.root} />
+    </group>
+  );
+}
+
+/* ════════════════════════════════════════════════
    Camera rig — smoothing, transition choreography, live dive
    ════════════════════════════════════════════════ */
 
-function CameraRig({ reg }: { reg: Registry }) {
+function CameraRig({
+  reg,
+  phone,
+}: {
+  reg: Registry;
+  phone: MutableRefObject<PhoneHandle | null>;
+}) {
   const { camera, viewport, gl } = useThree();
   const setDpr = useThree((s) => s.setDpr);
   /* COMPOSITOR DIVE: the camera never moves for CANLI İNCELE anymore.
@@ -1181,6 +1340,53 @@ function CameraRig({ reg }: { reg: Registry }) {
         quad.on = false;
       }
     }
+
+    /* companion phone screen quad → phoneQuad (persistent; the DOM overlay
+       is matrix3d-mapped onto it every frame, exactly like the laptop) */
+    {
+      const pq = swScroll.phoneQuad;
+      const ph = phone.current;
+      if (ph?.rig.anchor && ph.group?.visible !== false) {
+        const v = tmp.current;
+        const el = gl.domElement;
+        const cw = el.clientWidth || 1;
+        const ch = el.clientHeight || 1;
+        ph.rig.anchor.updateWorldMatrix(true, false);
+        ph.rig.anchor.getWorldPosition(v.aPos);
+        ph.rig.anchor.getWorldQuaternion(v.q);
+        const sw = ph.rig.screenWorld.w / 2;
+        const sh = ph.rig.screenWorld.h / 2;
+        const pscl = Math.sqrt(
+          ph.rig.anchor.matrixWorld.elements[0] ** 2 +
+            ph.rig.anchor.matrixWorld.elements[1] ** 2 +
+            ph.rig.anchor.matrixWorld.elements[2] ** 2
+        );
+        v.right.set(1, 0, 0).applyQuaternion(v.q).multiplyScalar(sw * pscl);
+        v.up.set(0, 1, 0).applyQuaternion(v.q).multiplyScalar(sh * pscl);
+        const pproj = (
+          sx: number,
+          sy: number,
+          ox: "x0" | "x1" | "x2" | "x3",
+          oy: "y0" | "y1" | "y2" | "y3"
+        ) => {
+          v.corner
+            .copy(v.aPos)
+            .addScaledVector(v.right, sx)
+            .addScaledVector(v.up, sy)
+            .project(camera);
+          pq[ox] = (v.corner.x * 0.5 + 0.5) * cw;
+          pq[oy] = (1 - (v.corner.y * 0.5 + 0.5)) * ch;
+        };
+        pproj(-1, 1, "x0", "y0");
+        pproj(1, 1, "x1", "y1");
+        pproj(1, -1, "x2", "y2");
+        pproj(-1, -1, "x3", "y3");
+        pq.on = true;
+        pq.idx = ph.projectIdx;
+      } else {
+        pq.on = false;
+      }
+    }
     // NOTE: no positive useFrame priority here — that would switch R3F
     // into manual-render mode and blank the whole canvas.
 
@@ -1350,6 +1556,7 @@ export default function MacBook3D({
   settledIdx: number;
 }) {
   const reg = useRef<Record<string, UnitHandle>>({});
+  const phone = useRef<PhoneHandle | null>(null);
   /* r22: units are fixed to their projects on the ring — the old A/B
      slot-recycling props are kept in the signature so SelectedWork
      stays untouched, but they no longer drive anything */
@@ -1414,9 +1621,12 @@ export default function MacBook3D({
             color="#000000"
             renderOrder={-1}
           />
+          {/* companion iPhone — real 3D model; its website pixels come from
+              the crisp DOM overlay in SelectedWork (native dpr) */}
+          <Phone reg={phone} settledIdx={settledIdx} />
         </StageRoot>
 
-        <CameraRig reg={reg} />
+        <CameraRig reg={reg} phone={phone} />
         <TextureWarmup />
       </Suspense>
     </Canvas>
@@ -1424,3 +1634,4 @@ export default function MacBook3D({
 }
 
 useGLTF.preload(MODEL_URL);
+useGLTF.preload(PHONE_MODEL_URL);

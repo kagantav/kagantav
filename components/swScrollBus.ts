@@ -52,6 +52,20 @@ export const swScroll = {
     x2: 0, y2: 0, // bottom-right
     x3: 0, y3: 0, // bottom-left
   },
+  /**
+   * The companion iPhone's screen quad, same idea as `quad` above: the 3D
+   * phone model's display face projected to canvas CSS pixels every frame,
+   * so a crisp DOM <video>/<img> overlay can be matrix3d-mapped onto it
+   * (the 3D model stays soft-at-canvas-dpr; the DOM overlay is native dpr).
+   */
+  phoneQuad: {
+    on: false,
+    idx: -1,
+    x0: 0, y0: 0,
+    x1: 0, y1: 0,
+    x2: 0, y2: 0,
+    x3: 0, y3: 0,
+  },
 };
 
 /* expose the bus for debugging/automated verification (harmless) */

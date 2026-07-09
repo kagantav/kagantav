@@ -516,6 +516,61 @@
   );
 }
 
+/* old flat DOM phone: kept mounted so its refs still guard applyVisual
+   AND its grid column still holds the layout (the panel stays on the
+   right), but hidden — the crisp 3D iPhone replaces it visually */
+.devices3d {
+  visibility: hidden;
+}
+
+/* ── companion iPhone screen overlay — crisp DOM media matrix3d-mapped
+   onto the 3D phone's projected display quad (native dpr, not canvas dpr) ── */
+.phoneOvHost {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.phoneOv {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 780px;
+  height: 1688px;
+  transform-origin: 0 0;
+  opacity: 0;
+  border-radius: 84px; /* rounded iPhone display corners */
+  overflow: hidden;
+  will-change: transform, opacity;
+  background: #050505;
+}
+
+.phoneOv video,
+.phoneOv img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  filter: brightness(0.965) saturate(1.04);
+}
+
+.phoneOvGlass {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.34);
+  background: linear-gradient(
+    120deg,
+    rgba(255, 255, 255, 0.08),
+    rgba(255, 255, 255, 0.02) 22%,
+    rgba(255, 255, 255, 0) 44%
+  );
+}
+
 .lcdHtml {
   pointer-events: none;
 }
