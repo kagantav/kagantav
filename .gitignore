@@ -17,3 +17,6 @@ Recording *.mp4
 .playwright-mcp/
 *video*.mp4
 *-demo.mp4
+
+iphone-view.mp4
+*-view.mp4
