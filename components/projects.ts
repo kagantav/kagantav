@@ -82,16 +82,19 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
     year: "2026",
   },
   {
-    id: "atlas-banking",
-    name: "Atlas Banking",
-    category: "Mobile Banking App",
+    id: "dr-cem-akman",
+    name: "Dr. Cem Akman",
+    category: "Medikal Estetik — Hekim",
     description:
-      "A mobile-first banking experience: biometric onboarding, instant transfers and spending insights rendered at 60fps.",
-    stack: ["React Native", "Node.js", "GraphQL"],
-    desktopMedia: { type: "image", src: null },
-    mobileMedia: { type: "image", src: null },
-    liveUrl: DEV_PLACEHOLDER_LIVE_URL, // TEMP dev-only
-    accentColor: "#c98f3a",
+      "Uzm. Dr. Cem Akman'ın medikal estetik kliniği için kurumsal tanıtım sitesi — uygulama vitrini, online randevu akışı ve güven veren, ferah bir hasta deneyimi.",
+    // TODO(kağan): gerçek stack'i teyit et
+    stack: ["Web Tasarım", "SEO", "Randevu Sistemi"],
+    desktopMedia: { type: "image", src: "/assets/projects/dr-cem-akman/desktop.png" },
+    mobileMedia: { type: "image", src: "/assets/projects/dr-cem-akman/mobile.png" },
+    // X-Frame-Options: SAMEORIGIN → gömülü önizleme kapalı
+    liveUrl: "https://drcemakman.com",
+    liveEmbed: false,
+    accentColor: "#d8a94f",
     year: "2025",
   },
   {

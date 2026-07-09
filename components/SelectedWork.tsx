@@ -35,7 +35,7 @@ const TRANSITIONS = N - 1;
 const SCENE_ACCENT: Record<string, string> = {
   miyavhav: "#e8823c", // warm orange
   bilitro3d: "#3fa9d6", // cyan / blue
-  "atlas-banking": "#d7a441", // gold
+  "dr-cem-akman": "#d98a9e", // soft rose (medical-aesthetic)
   "vanta-studio": "#9b8fd0", // neutral violet
   "helios-analytics": "#eaa63e", // amber
   "lumen-estate": "#c98f5a", // warm sand
@@ -108,7 +108,7 @@ function quadMatrix3d(
 /** bumped with every motion-fix round — printed to the console and shown
  *  in the ?swdebug HUD so there is never any doubt WHICH code is running
  *  in the browser being tested */
-const BUILD_TAG = "r26-cssstage-09.07";
+const BUILD_TAG = "r27-drcem-09.07";
 const pad = (n: number) => String(n + 1).padStart(2, "0");
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
