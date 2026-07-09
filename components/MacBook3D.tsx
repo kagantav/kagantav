@@ -93,24 +93,34 @@ export interface UnitPose {
    so the overlay quad, live dive and boundary assertion are untouched.
    Neighbours stay on stage as dark graphite silhouettes (shade, not
    opacity) — the showcase-archive look approved in the lab. */
-const RING_R = 4.2;
+/* ELLIPTICAL turntable: wide horizontally so two units are never side-by-side
+   at the close, low Work-section camera. At the transition midpoint the two
+   active units sit at ±30° → x-separation = RING_RX (6.6), well clear of the
+   3.6-wide device. Depth (RZ) sinks the flanks back so the front unit reads
+   as the single hero. */
+const RING_RX = 6.6;
+const RING_RZ = 5.2;
 const RING_STEP = (Math.PI * 2) / N;
 
 function poseFromDistance(d: number): UnitPose {
-  const a = -d * RING_STEP; // 0 = front/settled; next project waits stage-right
+  /* +d: the OUTGOING unit exits stage-right (behind the editorial text
+     panel, exactly like the old choreography) and the INCOMING arrives
+     from the open stage-left. Also matches the camera's left drift. */
+  const a = d * RING_STEP; // 0 = front/settled
   const front = Math.cos(a);
-  const w = clamp01((front - 0.15) / 0.85);
-  const w3 = w * w * w;
+  const w = clamp01((front - 0.1) / 0.9);
+  const w2 = w * w;
+  const w3 = w2 * w;
   return {
-    x: Math.sin(a) * RING_R + P_SHOW.x,
+    x: Math.sin(a) * RING_RX + P_SHOW.x,
     y: P_SHOW.y,
-    z: (front - 1) * RING_R + P_SHOW.z,
+    z: (front - 1) * RING_RZ + P_SHOW.z,
     ry: a + P_SHOW.ry,
     rx: P_SHOW.rx,
     rz: P_SHOW.rz,
-    s: P_SHOW.s,
-    /* far-side units fade out entirely (they'd read through the mirror
-       glare otherwise); flank units stay fully opaque but dark */
+    /* neighbours a touch smaller so the hero dominates; front = full */
+    s: P_SHOW.s * (0.8 + 0.2 * w2),
+    /* far-side units fade out entirely; the front + two flanks stay */
     opacity: smoother(clamp01((front + 0.28) / 0.32)),
     lidT: 0.16 + 0.84 * easeOut(clamp01((front - 0.45) / 0.5)),
     presence: w3,
@@ -218,12 +228,12 @@ function useMacRig(): MacRig {
         /* the GLB ships materials with real transmission — three runs an
            extra full-scene transmission pass for them EVERY frame, and
            that pass corrupts clear-color state under nested renders
-           (mirror floor). Dark stage needs no true refraction: kill it. */
+           (mirror floor). Dark stage needs no true refraction: kill it.
+           Leave opacity alone — forcing translucency here made bodies
+           see-through so the mirror bled over them. */
         const ph = cloned as THREE.MeshPhysicalMaterial;
         if (ph.transmission !== undefined && ph.transmission > 0) {
           ph.transmission = 0;
-          ph.transparent = true;
-          ph.opacity = Math.min(ph.opacity, 0.5);
         }
         if (Array.isArray(mesh.material)) mesh.material[mi] = cloned;
         else mesh.material = cloned;
@@ -1262,7 +1272,10 @@ function StageRoot({ children }: { children: React.ReactNode }) {
           süzülür (lab'da onaylanan keynote görünümü). Portrede kapalı —
           mobil GPU'da ikinci sahne render'ına gerek yok. */}
       {!portrait && (
-        <mesh rotation-x={-Math.PI / 2} position={[0, -0.02, 0]}>
+        /* renderOrder -2 + depthWrite: the floor draws FIRST and stamps
+           depth, so every laptop in front of it wins the depth test and
+           the mirror can never paint over a device. Fixes the dark bleed. */
+        <mesh rotation-x={-Math.PI / 2} position={[0, -0.02, 0]} renderOrder={-2}>
           <circleGeometry args={[15, 48]} />
           <MeshReflectorMaterial
             mirror={0.5}
@@ -1276,6 +1289,7 @@ function StageRoot({ children }: { children: React.ReactNode }) {
             roughness={1}
             transparent
             opacity={0.92}
+            depthWrite
           />
         </mesh>
       )}
@@ -1342,15 +1356,20 @@ export default function MacBook3D({
               scene's depth EVERY frame was the single biggest per-frame
               GPU cost. A soft static pool under the stage center is
               visually identical for a dark hovering-laptop scene. */}
+          {/* tight pool under the CENTRE hero only (scale 6.5 → radius
+              ~3.25): the flanks now live at ±6.6, well outside it, so the
+              contact shadow can no longer bleed onto an adjacent device.
+              renderOrder -1 keeps it behind every laptop in the draw. */}
           <ContactShadows
             frames={1}
-            position={[0, 0.005, 0]}
-            opacity={0.55}
-            scale={13}
-            blur={2.6}
-            far={3.2}
+            position={[0, 0.004, 0]}
+            opacity={0.5}
+            scale={6.5}
+            blur={3}
+            far={2.6}
             resolution={256}
             color="#000000"
+            renderOrder={-1}
           />
         </StageRoot>
 
