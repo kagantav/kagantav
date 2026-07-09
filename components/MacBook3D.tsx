@@ -119,8 +119,10 @@ function poseFromDistance(d: number): UnitPose {
     rz: P_SHOW.rz,
     /* neighbours a touch smaller so the hero dominates; front = full */
     s: P_SHOW.s * (0.8 + 0.2 * w2),
-    /* far-side units fade out entirely; the front + two flanks stay */
-    opacity: smoother(clamp01((front + 0.28) / 0.32)),
+    /* editorial, not carousel: the hero is solid, flanks drop to faint
+       ghosts (rest ≈0.2) so the scene reads as ONE device, not a rack.
+       The incoming/outgoing pair still ramps up as it rotates to front. */
+    opacity: smoother(clamp01((front - 0.3) / 0.7)),
     lidT: 0.16 + 0.84 * easeOut(clamp01((front - 0.45) / 0.5)),
     presence: w3,
   };

@@ -72,32 +72,130 @@
   overflow: clip;
 }
 
-/* premium black-gold reference-stage backdrop, behind everything.
-   Sits under the transparent 3D canvas; a top fade blends it into the
-   page background so the pinned stage has no hard seam. */
-.sectionBg {
+/* ══ CSS-driven cinematic dark stage (replaces the bg image) ══
+   Every layer is transform/opacity/gradient only — no video, no image.
+   Colour is driven by --scene, a per-project accent that GSAP
+   interpolates on scroll. @property makes it a real <color> so any
+   direct set (settle / reduced-motion) also animates. */
+@property --scene {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #d8a94f;
+}
+
+/* base wash + deep vignette, painted straight onto the stage */
+.stage::before {
+  content: "";
   position: absolute;
   inset: 0;
   z-index: 0;
-  background: url("/assets/ref-section-bg.png") center bottom / cover no-repeat;
   pointer-events: none;
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    transparent 0%,
-    #000 18%,
-    #000 88%,
-    transparent 100%
-  );
-  mask-image: linear-gradient(
-    to bottom,
-    transparent 0%,
-    #000 18%,
-    #000 88%,
-    transparent 100%
-  );
+  transition: background 0.6s ease;
+  background:
+    radial-gradient(
+      120% 82% at 42% 30%,
+      color-mix(in srgb, var(--scene) 9%, transparent) 0%,
+      transparent 54%
+    ),
+    radial-gradient(
+      70% 55% at 46% 116%,
+      color-mix(in srgb, var(--scene) 12%, transparent) 0%,
+      transparent 60%
+    ),
+    radial-gradient(150% 130% at 50% 46%, transparent 50%, rgba(0, 0, 0, 0.74) 100%);
 }
 
-/* accent pool behind the devices — animated via --accent */
+/* perspective floor grid receding under the devices */
+.grid {
+  position: absolute;
+  left: 50%;
+  bottom: -8%;
+  width: 210%;
+  height: 60%;
+  transform: translateX(-50%) perspective(64vh) rotateX(74deg);
+  transform-origin: 50% 100%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.6;
+  background-image:
+    linear-gradient(
+      to right,
+      color-mix(in srgb, var(--scene) 42%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--scene) 42%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 4.6% 11%;
+  -webkit-mask-image: radial-gradient(58% 94% at 50% 100%, #000 0%, transparent 76%);
+  mask-image: radial-gradient(58% 94% at 50% 100%, #000 0%, transparent 76%);
+}
+
+/* soft coloured ambient glow behind the hero — the scene's key light */
+.ambient {
+  position: absolute;
+  left: 44%;
+  top: 44%;
+  width: 82%;
+  height: 82%;
+  transform: translate(-50%, -50%);
+  z-index: 0;
+  pointer-events: none;
+  transition: background 0.6s ease;
+  background: radial-gradient(
+    44% 40% at 44% 52%,
+    color-mix(in srgb, var(--scene) 26%, transparent) 0%,
+    color-mix(in srgb, var(--scene) 8%, transparent) 42%,
+    transparent 68%
+  );
+  filter: blur(34px);
+}
+
+/* large blurred grounding shadow + a soft accent floor-glow under it */
+.floorShadow {
+  position: absolute;
+  left: 41%;
+  bottom: 9%;
+  width: 48%;
+  height: 13%;
+  transform: translateX(-50%);
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(50% 50% at 50% 50%, rgba(0, 0, 0, 0.72) 0%, transparent 70%);
+  filter: blur(16px);
+}
+.floorShadow::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 26%;
+  width: 66%;
+  height: 66%;
+  transform: translateX(-50%);
+  background: radial-gradient(
+    50% 50% at 50% 50%,
+    color-mix(in srgb, var(--scene) 42%, transparent) 0%,
+    transparent 68%
+  );
+  filter: blur(18px);
+  opacity: 0.55;
+}
+
+/* fine film grain, barely there */
+.noise {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.028;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 240px 240px;
+}
+
+/* accent pool behind the devices — animated via --accent (gold base) */
 .glow {
   --accent: #d8a94f;
   position: absolute;
@@ -105,15 +203,27 @@
   top: 8vh;
   width: 68vw;
   height: 84vh;
+  z-index: 0;
   background:
     radial-gradient(
       52% 46% at 44% 58%,
-      color-mix(in srgb, var(--accent) 22%, transparent) 0%,
-      color-mix(in srgb, var(--accent) 8%, transparent) 46%,
+      color-mix(in srgb, var(--accent) 16%, transparent) 0%,
+      color-mix(in srgb, var(--accent) 6%, transparent) 46%,
       transparent 72%
     );
   filter: blur(6px);
   pointer-events: none;
+}
+
+/* reduced motion: freeze the shifting layers to a calm static state */
+@media (prefers-reduced-motion: reduce) {
+  .stage::before,
+  .ambient {
+    transition: none;
+  }
+  .noise {
+    display: none;
+  }
 }
 
 /* ── Devices ───────────────────────────────────── */
@@ -174,16 +284,18 @@
   background: #050302;
 }
 
+/* phone sits ON the laptop's lower-right, sharing its ground plane —
+   less "floating sticker", more a companion device on the same stage */
 .phoneWrap {
   position: absolute;
-  right: -1%;
-  bottom: -9%;
-  width: 23.5%;
+  right: 4%;
+  bottom: -4%;
+  width: 22%;
   aspect-ratio: 658 / 1333;
   z-index: 3;
-  transform: translateZ(90px) rotateY(-3deg);
+  transform: translateZ(60px) rotateY(-3deg);
   will-change: transform;
-  filter: drop-shadow(0 26px 44px rgba(0, 0, 0, 0.7));
+  filter: drop-shadow(0 20px 30px rgba(0, 0, 0, 0.62));
 }
 
 /* screen opening measured from iphone.png alpha: 7.75% / 3.0%, 84.65% × 94.1% */
@@ -629,6 +741,25 @@
   position: relative;
   z-index: 4;
   min-width: 0;
+  padding: clamp(22px, 2vw, 38px) clamp(22px, 2vw, 36px);
+  border-radius: 22px;
+  background: linear-gradient(
+    158deg,
+    color-mix(in srgb, var(--scene) 8%, rgba(12, 9, 6, 0.72)),
+    rgba(6, 4, 3, 0.62)
+  );
+  border: 1px solid color-mix(in srgb, var(--scene) 24%, rgba(255, 255, 255, 0.06));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow:
+    0 34px 90px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  transition: border-color 0.6s ease, background 0.6s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    transition: none;
+  }
 }
 
 .counterRow {

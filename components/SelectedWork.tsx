@@ -27,6 +27,23 @@ gsap.registerPlugin(ScrollTrigger);
 
 const N = FEATURED_PROJECTS.length;
 const TRANSITIONS = N - 1;
+
+/* Per-project SCENE accent — drives the CSS stage's key light, floor grid
+   tint and glass-panel border. Kept out of projects.ts so the data
+   structure is untouched; falls back to each project's gold accentColor.
+   Editorial, not neon: a restrained tint over the black-gold base. */
+const SCENE_ACCENT: Record<string, string> = {
+  miyavhav: "#e8823c", // warm orange
+  bilitro3d: "#3fa9d6", // cyan / blue
+  "atlas-banking": "#d7a441", // gold
+  "vanta-studio": "#9b8fd0", // neutral violet
+  "helios-analytics": "#eaa63e", // amber
+  "lumen-estate": "#c98f5a", // warm sand
+};
+const sceneAccentOf = (i: number) =>
+  SCENE_ACCENT[FEATURED_PROJECTS[i]?.id] ??
+  FEATURED_PROJECTS[i]?.accentColor ??
+  "#d8a94f";
 /** smootherstep — zero 1st AND 2nd derivative at both ends */
 const smooth5 = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
 
@@ -91,7 +108,7 @@ function quadMatrix3d(
 /** bumped with every motion-fix round — printed to the console and shown
  *  in the ?swdebug HUD so there is never any doubt WHICH code is running
  *  in the browser being tested */
-const BUILD_TAG = "r25-refbg-09.07";
+const BUILD_TAG = "r26-cssstage-09.07";
 const pad = (n: number) => String(n + 1).padStart(2, "0");
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
@@ -534,6 +551,7 @@ export default function SelectedWork() {
 
     const ctx = gsap.context(() => {
       const glow = root.querySelector<HTMLElement>("[data-sw-glow]");
+      const stage = root.querySelector<HTMLElement>("[data-sw-stage]");
       const panel = root.querySelector<HTMLElement>("[data-sw-panel]");
       const strip = root.querySelector<HTMLElement>("[data-sw-countstrip]");
       const canvasWrap = root.querySelector<HTMLElement>(
@@ -556,6 +574,10 @@ export default function SelectedWork() {
       let lastLive = NaN;
       let zoomOn = false;
       const glowMix: { k: number; fn: ((t: number) => string) | null } = {
+        k: -1,
+        fn: null,
+      };
+      const sceneMix: { k: number; fn: ((t: number) => string) | null } = {
         k: -1,
         fn: null,
       };
@@ -698,6 +720,21 @@ export default function SelectedWork() {
             x: -12 * vw * bump(to),
             opacity: (1 - 0.25 * bump(to)) * liveDim,
           });
+        }
+
+        /* ── scene accent: the whole CSS stage (floor grid, ambient key
+           light, glass-panel border) shifts colour across the transition.
+           Same segment-cached interpolator pattern as the glow. ── */
+        if (stage) {
+          const mixT = clamp01((lt - 0.28) / 0.44);
+          if (sceneMix.k !== kk) {
+            sceneMix.k = kk;
+            sceneMix.fn = gsap.utils.interpolate(
+              sceneAccentOf(kk),
+              sceneAccentOf(Math.min(kk + 1, N - 1))
+            );
+          }
+          stage.style.setProperty("--scene", sceneMix.fn!(mixT));
         }
 
         /* ── counter rolls vertically: 01 exits up, 02 enters from below ── */
@@ -943,11 +980,18 @@ export default function SelectedWork() {
       </div>
 
       {/* ── pinned carousel stage ── */}
-      <div className={styles.stage} data-sw-stage>
-        {/* premium black-gold reference-stage backdrop (behind the canvas).
-            Revert: remove this div + .sectionBg, or checkout
-            backup-r24-lightpool. */}
-        <div className={styles.sectionBg} aria-hidden="true" />
+      <div
+        className={styles.stage}
+        data-sw-stage
+        style={{ "--scene": SCENE_ACCENT[FEATURED_PROJECTS[0].id] } as React.CSSProperties}
+      >
+        {/* CSS-driven cinematic stage (no bg image): floor grid, coloured
+            ambient key light, grounding shadow, film grain. Colour tracks
+            the active project via --scene. */}
+        <div className={styles.grid} aria-hidden="true" />
+        <div className={styles.ambient} data-sw-ambient aria-hidden="true" />
+        <div className={styles.floorShadow} aria-hidden="true" />
+        <div className={styles.noise} aria-hidden="true" />
         <div
           className={styles.glow}
           data-sw-glow
