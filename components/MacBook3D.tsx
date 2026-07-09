@@ -14,7 +14,6 @@ import {
   ContactShadows,
   Environment,
   Lightformer,
-  MeshReflectorMaterial,
 } from "@react-three/drei";
 import { SkeletonUtils } from "three-stdlib";
 import gsap from "gsap";
@@ -1259,6 +1258,72 @@ function TextureWarmup() {
    Stage placement + canvas shell
    ════════════════════════════════════════════════ */
 
+/* soft radial texture for the light pool / ground seat — built once */
+function makeRadialTexture(stops: [number, string][]) {
+  const c = document.createElement("canvas");
+  c.width = c.height = 256;
+  const g = c.getContext("2d")!;
+  const grad = g.createRadialGradient(128, 128, 4, 128, 128, 128);
+  for (const [o, col] of stops) grad.addColorStop(o, col);
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 256, 256);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+/* CINEMATIC VOID STAGE (r24): the mirror made laptops look half-sunk in a
+   dark pool. Replaced with a warm spotlight pool on infinite black — the
+   hero sits in the light, no reflection, no hard floor edge, nothing to
+   intersect. Revert to the mirror with:
+     git checkout backup-r23-mirror-floor -- components/MacBook3D.tsx  */
+function StageFloor() {
+  const pool = useMemo(
+    () =>
+      makeRadialTexture([
+        [0, "rgba(255,216,150,0.55)"],
+        [0.38, "rgba(232,176,96,0.17)"],
+        [1, "rgba(232,176,96,0)"],
+      ]),
+    []
+  );
+  const seat = useMemo(
+    () =>
+      makeRadialTexture([
+        [0, "rgba(48,38,24,0.42)"],
+        [0.5, "rgba(26,20,13,0.14)"],
+        [1, "rgba(20,15,9,0)"],
+      ]),
+    []
+  );
+  return (
+    <group>
+      {/* wide, faint seat — hints at a ground plane in the void, no edge */}
+      <mesh rotation-x={-Math.PI / 2} position={[0, -0.05, -1]} renderOrder={-3}>
+        <planeGeometry args={[30, 22]} />
+        <meshBasicMaterial
+          map={seat}
+          transparent
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          fog={false}
+        />
+      </mesh>
+      {/* warm spotlight pool marking the active stage spot */}
+      <mesh rotation-x={-Math.PI / 2} position={[0, -0.03, 0.3]} renderOrder={-2}>
+        <planeGeometry args={[12, 8.5]} />
+        <meshBasicMaterial
+          map={pool}
+          transparent
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          fog={false}
+        />
+      </mesh>
+    </group>
+  );
+}
+
 function StageRoot({ children }: { children: React.ReactNode }) {
   const { viewport } = useThree();
   const portrait = viewport.aspect < 1.05;
@@ -1268,31 +1333,7 @@ function StageRoot({ children }: { children: React.ReactNode }) {
       scale={portrait ? 0.62 : 1}
     >
       {children}
-      {/* simsiyah ayna zemin: laptoplar loş yansımalarının üstünde
-          süzülür (lab'da onaylanan keynote görünümü). Portrede kapalı —
-          mobil GPU'da ikinci sahne render'ına gerek yok. */}
-      {!portrait && (
-        /* renderOrder -2 + depthWrite: the floor draws FIRST and stamps
-           depth, so every laptop in front of it wins the depth test and
-           the mirror can never paint over a device. Fixes the dark bleed. */
-        <mesh rotation-x={-Math.PI / 2} position={[0, -0.02, 0]} renderOrder={-2}>
-          <circleGeometry args={[15, 48]} />
-          <MeshReflectorMaterial
-            mirror={0.5}
-            resolution={512}
-            blur={[260, 60]}
-            mixBlur={0.9}
-            mixStrength={1.4}
-            depthScale={0}
-            color="#0a0908"
-            metalness={0.35}
-            roughness={1}
-            transparent
-            opacity={0.92}
-            depthWrite
-          />
-        </mesh>
-      )}
+      {!portrait && <StageFloor />}
     </group>
   );
 }
