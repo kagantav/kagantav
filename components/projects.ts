@@ -100,43 +100,49 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
     year: "2025",
   },
   {
-    id: "vanta-studio",
-    name: "Vanta Studio",
-    category: "Agency Portfolio",
+    id: "derunstudio",
+    name: "Derun Studio",
+    category: "İç Mimari — Tasarım Stüdyosu",
     description:
-      "Award-style agency site with WebGL scenes, editorial typography and a CMS the team actually enjoys using.",
-    stack: ["Next.js", "Three.js", "GSAP", "Sanity"],
-    desktopMedia: { type: "image", src: null },
-    mobileMedia: { type: "image", src: null },
-    liveUrl: DEV_PLACEHOLDER_LIVE_URL, // TEMP dev-only
-    accentColor: "#f0d9a8",
+      "İç mimari ve wellbeing odaklı bir tasarım stüdyosunun tanıtım sitesi — mekânı iyileştiren, doğaya ve insana dokunan bütüncül bir marka deneyimi.",
+    // TODO(kağan): stack teyit
+    stack: ["Web Tasarım", "UI/UX", "SEO"],
+    desktopMedia: { type: "image", src: "/assets/projects/derunstudio/desktop.jpg" },
+    mobileMedia: { type: "image", src: "/assets/projects/derunstudio/mobile.jpg" },
+    liveUrl: "https://derunstudio.com",
+    liveEmbed: false,
+    accentColor: "#6fb3a4",
     year: "2025",
   },
   {
-    id: "helios-saas",
-    name: "Helios Analytics",
-    category: "SaaS Platform",
+    id: "ngequipments",
+    name: "NG Equipments",
+    category: "Endüstriyel — İş Makinesi",
     description:
-      "Multi-tenant analytics suite — role-based dashboards, exportable reports and an onboarding flow that converts.",
-    stack: ["React", "Node.js", "ClickHouse", "Docker"],
-    desktopMedia: { type: "image", src: null },
-    mobileMedia: { type: "image", src: null },
-    liveUrl: DEV_PLACEHOLDER_LIVE_URL, // TEMP dev-only
-    accentColor: "#b97f2e",
+      "İş makinesi ataşmanları üreten NG Group'un kurumsal sitesi — güçlü sahne görselleri, ürün vitrini ve endüstriyel, güven veren bir marka dili.",
+    // TODO(kağan): stack teyit
+    stack: ["Kurumsal Site", "Katalog", "SEO"],
+    desktopMedia: { type: "image", src: "/assets/projects/ngequipments/desktop.jpg" },
+    mobileMedia: { type: "image", src: "/assets/projects/ngequipments/mobile.jpg" },
+    liveUrl: "https://ngequipments.com",
+    liveEmbed: false,
+    accentColor: "#c98f3a",
     year: "2025",
   },
   {
-    id: "lumen-estate",
-    name: "Lumen Estate",
-    category: "Real Estate Experience",
+    id: "goatmedia",
+    name: "Goat Media",
+    category: "Dijital Ajans — Dubai",
     description:
-      "Luxury property showcase with map-driven search, virtual tours and lead automation for a boutique agency.",
-    stack: ["Next.js", "Mapbox", "Prisma", "PostgreSQL"],
-    desktopMedia: { type: "image", src: null },
-    mobileMedia: { type: "image", src: null },
-    liveUrl: DEV_PLACEHOLDER_LIVE_URL, // TEMP dev-only
-    accentColor: "#dfa855",
-    year: "2024",
+      "Dubai merkezli bir dijital ajansın tanıtım sitesi — marka, sosyal medya ve prodüksiyon hizmetleri için modern, hareketli bir vitrin.",
+    // TODO(kağan): stack teyit
+    stack: ["Web Tasarım", "Motion", "SEO"],
+    desktopMedia: { type: "image", src: "/assets/projects/goatmedia/desktop.jpg" },
+    mobileMedia: { type: "image", src: "/assets/projects/goatmedia/mobile.jpg" },
+    liveUrl: "https://goatmediadxb.com",
+    liveEmbed: false,
+    accentColor: "#8f9bd6",
+    year: "2025",
   },
 ];
 
@@ -150,17 +156,28 @@ export interface ArchiveProject {
   stack: string[];
   liveUrl: string | null;
   accentColor: string;
+  /** screenshot thumbnail under /assets/archive; null → styled fallback */
+  thumb: string | null;
 }
 
+/* Kağan'ın çalıştığı işlerin tam arşivi. Stack'ler kaba tahmin — TODO teyit.
+   thumb = /assets/archive/<id>.jpg (erişilemeyen 2 site null → placeholder). */
 export const ARCHIVE_PROJECTS: ArchiveProject[] = [
-  { id: "kron-logistics", name: "Kron Logistics", category: "Corporate Site", year: "2026", stack: ["Next.js", "Tailwind"], liveUrl: null, accentColor: "#d8a94f" },
-  { id: "mira-clinic", name: "Mira Clinic", category: "Healthcare", year: "2026", stack: ["React", "Node.js"], liveUrl: null, accentColor: "#e8c06a" },
-  { id: "forge-gym", name: "Forge Athletics", category: "Fitness Platform", year: "2025", stack: ["Next.js", "Supabase"], liveUrl: null, accentColor: "#c98f3a" },
-  { id: "sable-hotel", name: "Sable Hotels", category: "Hospitality", year: "2025", stack: ["Next.js", "Sanity"], liveUrl: null, accentColor: "#f0d9a8" },
-  { id: "pulse-events", name: "Pulse Events", category: "Ticketing", year: "2025", stack: ["React", "Stripe"], liveUrl: null, accentColor: "#b97f2e" },
-  { id: "orbit-agency", name: "Orbit Agency", category: "Marketing Site", year: "2025", stack: ["Astro", "GSAP"], liveUrl: null, accentColor: "#dfa855" },
-  { id: "cedar-legal", name: "Cedar & Co. Legal", category: "Law Firm", year: "2024", stack: ["Next.js", "Payload"], liveUrl: null, accentColor: "#d8a94f" },
-  { id: "nova-edu", name: "Nova Academy", category: "E-Learning", year: "2024", stack: ["React", "PostgreSQL"], liveUrl: null, accentColor: "#e8c06a" },
-  { id: "terra-agro", name: "Terra Agro", category: "Corporate Site", year: "2024", stack: ["Next.js", "Strapi"], liveUrl: null, accentColor: "#c98f3a" },
-  { id: "quartz-jewelry", name: "Quartz Jewelry", category: "E-Commerce", year: "2024", stack: ["Shopify", "Hydrogen"], liveUrl: null, accentColor: "#f0d9a8" },
+  { id: "akman-ciftlik", name: "Akman Orman Çiftliği", category: "Doğa & Yaşam", year: "2025", stack: ["Web Tasarım", "SEO"], liveUrl: "https://akmanormanciftligi.com", accentColor: "#7fae5a", thumb: "/assets/archive/akman-ciftlik.jpg" },
+  { id: "bilitro-com", name: "Bilitro", category: "Yazılım & Medya", year: "2025", stack: ["Web Tasarım", "UI/UX"], liveUrl: "https://bilitro.com", accentColor: "#e8c06a", thumb: "/assets/archive/bilitro-com.jpg" },
+  { id: "cpa-fahrdienst", name: "Cappadocia Fahrdienst", category: "Lüks Transfer", year: "2025", stack: ["Web Tasarım", "SEO"], liveUrl: "https://cpafahrdienst.ch", accentColor: "#c9a24a", thumb: "/assets/archive/cpa-fahrdienst.jpg" },
+  { id: "deko", name: "Deko Dekorasyon", category: "İç Mekan Tasarımı", year: "2025", stack: ["Web Tasarım", "SEO"], liveUrl: "https://dekodekorasyon.com", accentColor: "#d8a94f", thumb: "/assets/archive/deko.jpg" },
+  { id: "gia-wallpaper", name: "Gia Design Wallpaper", category: "Duvar Kağıdı & Tasarım", year: "2025", stack: ["E-Ticaret", "UI/UX"], liveUrl: "https://giadesignwallpaper.com", accentColor: "#cf8fa6", thumb: "/assets/archive/gia-wallpaper.jpg" },
+  { id: "dr-bugce", name: "Op. Dr. Buğçe Ballıoğlu Güney", category: "Sağlık — Hekim", year: "2025", stack: ["Web Tasarım", "SEO"], liveUrl: "https://drbugceballiogluguney.com", accentColor: "#d98a9e", thumb: "/assets/archive/dr-bugce.jpg" },
+  { id: "imperio-racing", name: "İmperio Racing Studio", category: "Yarış Simülasyonu", year: "2025", stack: ["Web Tasarım", "Motion"], liveUrl: "https://imperioracingstudio.com", accentColor: "#d2503c", thumb: "/assets/archive/imperio-racing.jpg" },
+  { id: "levelup-eryaman", name: "LevelUp Oyun Salonu", category: "Oyun & Eğlence", year: "2025", stack: ["Web Tasarım", "UI/UX"], liveUrl: "https://leveluperyaman.com", accentColor: "#8f9bd6", thumb: "/assets/archive/levelup-eryaman.jpg" },
+  { id: "lion-led", name: "Lion LED Lighting", category: "LED Aydınlatma", year: "2024", stack: ["Web Tasarım", "SEO"], liveUrl: "https://lionledlighting.com", accentColor: "#e8c06a", thumb: null },
+  { id: "medisante", name: "Özel Medisante Polikliniği", category: "Sağlık — Poliklinik", year: "2025", stack: ["Web Tasarım", "SEO"], liveUrl: "https://ozelmedisantepoliklinik.com", accentColor: "#5aa89a", thumb: "/assets/archive/medisante.jpg" },
+  { id: "pr-turkiye", name: "PR Türkiye", category: "Halkla İlişkiler", year: "2024", stack: ["Web Tasarım", "İçerik"], liveUrl: "https://prturkiye.net", accentColor: "#d8a94f", thumb: "/assets/archive/pr-turkiye.jpg" },
+  { id: "royal-premium", name: "Royal Premium", category: "Gayrimenkul", year: "2025", stack: ["Web Tasarım", "SEO"], liveUrl: "https://royalpremium.com.tr", accentColor: "#c9a24a", thumb: "/assets/archive/royal-premium.jpg" },
+  { id: "sekmen-sigorta", name: "Sekmen Sigorta", category: "Sigorta Aracılığı", year: "2024", stack: ["Web Tasarım", "SEO"], liveUrl: "https://sekmensigorta.com.tr", accentColor: "#5a8fb0", thumb: "/assets/archive/sekmen-sigorta.jpg" },
+  { id: "soul-sante", name: "Soulsante Psikoloji", category: "Psikoloji & Danışmanlık", year: "2025", stack: ["Web Tasarım", "SEO"], liveUrl: "https://soulsante.com.tr", accentColor: "#9b8fd0", thumb: "/assets/archive/soul-sante.jpg" },
+  { id: "efesin", name: "Efesin İnşaat & Mühendislik", category: "İnşaat & Tesis Yönetimi", year: "2024", stack: ["Kurumsal Site", "SEO"], liveUrl: "https://efesin.com", accentColor: "#c98f3a", thumb: "/assets/archive/efesin.jpg" },
+  { id: "otovia", name: "Otovia Türkiye", category: "Otomotiv Aksesuar", year: "2025", stack: ["E-Ticaret", "SEO"], liveUrl: "https://otoviaturkiye.com", accentColor: "#6a9bc0", thumb: "/assets/archive/otovia.jpg" },
+  { id: "miyavhav-com", name: "MiyavHav", category: "E-Ticaret — Pet Shop", year: "2024", stack: ["Shopify", "UI/UX"], liveUrl: "https://miyavhav.com", accentColor: "#d8a94f", thumb: null },
 ];

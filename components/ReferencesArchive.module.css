@@ -61,26 +61,40 @@
   gap: clamp(18px, 2vw, 28px);
 }
 
+.count {
+  margin-left: 6px;
+  font-style: normal;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: color-mix(in srgb, var(--gold) 80%, #fff);
+  border: 1px solid rgba(216, 169, 79, 0.3);
+  border-radius: 999px;
+  padding: 3px 9px;
+  -webkit-text-fill-color: currentColor;
+}
+
 .card {
+  --accent: #d8a94f;
   position: relative;
   display: flex;
   flex-direction: column;
   border: 1px solid rgba(216, 169, 79, 0.14);
-  border-radius: 14px;
+  border-radius: 16px;
   background: linear-gradient(180deg, rgba(14, 10, 6, 0.85), rgba(8, 5, 3, 0.9));
   overflow: hidden;
   transition: border-color 0.4s ease, box-shadow 0.4s ease, transform 0.4s ease;
 }
 
 .card:hover {
-  border-color: rgba(243, 215, 145, 0.45);
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.5), 0 0 32px rgba(216, 169, 79, 0.12);
-  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow:
+    0 22px 50px rgba(0, 0, 0, 0.55),
+    0 0 38px color-mix(in srgb, var(--accent) 20%, transparent);
+  transform: translateY(-5px);
 }
 
 /* ── Thumb / preview area ──────────────────────── */
 .thumb {
-  --accent: #d8a94f;
   position: relative;
   aspect-ratio: 16 / 10;
   display: grid;
@@ -96,13 +110,63 @@
   border-bottom: 1px solid rgba(216, 169, 79, 0.12);
 }
 
+/* real site screenshot */
+.thumbImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  transform: scale(1.01);
+  transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.card:hover .thumbImg {
+  transform: scale(1.06);
+}
+
+/* bottom scrim so the category label + edge read cleanly over any shot */
+.thumbScrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(4, 3, 2, 0.28) 0%,
+    transparent 26%,
+    transparent 58%,
+    rgba(4, 3, 2, 0.78) 100%
+  );
+}
+
+.thumbCat {
+  position: absolute;
+  left: 16px;
+  bottom: 12px;
+  z-index: 2;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--accent) 60%, #fff);
+  transform: translateY(4px);
+  opacity: 0.82;
+  transition: transform 0.4s ease, opacity 0.4s ease;
+}
+.card:hover .thumbCat {
+  transform: translateY(0);
+  opacity: 1;
+}
+
 .thumbIndex {
   position: absolute;
-  top: 14px;
-  left: 18px;
+  top: 13px;
+  right: 16px;
+  z-index: 2;
   font-size: 11px;
-  letter-spacing: 0.3em;
-  color: var(--ink-faint);
+  letter-spacing: 0.28em;
+  color: rgba(255, 252, 244, 0.82);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
 }
 
 .thumbMark {

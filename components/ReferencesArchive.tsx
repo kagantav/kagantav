@@ -47,33 +47,46 @@ export default function ReferencesArchive() {
       <header className={styles.head}>
         <p className={styles.eyebrow}>
           <span />
-          References Archive
+          Full Archive
+          <em className={styles.count}>{String(ARCHIVE_PROJECTS.length).padStart(2, "0")}</em>
         </p>
-        <h2 className={styles.title}>More builds & collaborations.</h2>
+        <h2 className={styles.title}>Every site I&apos;ve shipped.</h2>
         <p className={styles.sub}>
-          A growing archive of production work — sites, platforms and products
-          shipped for clients across industries.
+          Öne çıkan birkaç işi yukarıda vitrine aldık — bu da geri kalanı:
+          markalar, klinikler, stüdyolar ve mağazalar için baştan sona
+          tasarlayıp ürettiğim canlı sitelerin arşivi.
         </p>
       </header>
 
       <div className={styles.grid}>
         {ARCHIVE_PROJECTS.map((p, i) => {
+          const initials = p.name
+            .replace(/[^\p{L}\s]/gu, "")
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((w) => w[0])
+            .join("")
+            .toUpperCase();
           const inner = (
             <>
-              <div
-                className={styles.thumb}
-                style={{ "--accent": p.accentColor } as React.CSSProperties}
-              >
+              <div className={styles.thumb}>
+                {p.thumb ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    className={styles.thumbImg}
+                    src={p.thumb}
+                    alt={p.name}
+                    loading="lazy"
+                  />
+                ) : (
+                  <span className={styles.thumbMark}>{initials}</span>
+                )}
+                <i className={styles.thumbScrim} aria-hidden="true" />
                 <span className={styles.thumbIndex}>
                   {String(i + 1).padStart(2, "0")}
                 </span>
-                <span className={styles.thumbMark}>
-                  {p.name
-                    .split(" ")
-                    .slice(0, 2)
-                    .map((w) => w[0])
-                    .join("")}
-                </span>
+                <span className={styles.thumbCat}>{p.category}</span>
                 <i className={styles.thumbSheen} aria-hidden="true" />
               </div>
               <div className={styles.cardBody}>
@@ -91,8 +104,6 @@ export default function ReferencesArchive() {
                   </svg>
                 </div>
                 <p className={styles.cardMeta}>
-                  <span>{p.category}</span>
-                  <i />
                   <span>{p.year}</span>
                   <i />
                   <span>{p.stack.join(" · ")}</span>
@@ -109,11 +120,17 @@ export default function ReferencesArchive() {
               rel="noreferrer"
               className={styles.card}
               data-ra-card=""
+              style={{ "--accent": p.accentColor } as React.CSSProperties}
             >
               {inner}
             </a>
           ) : (
-            <div key={p.id} className={styles.card} data-ra-card="">
+            <div
+              key={p.id}
+              className={styles.card}
+              data-ra-card=""
+              style={{ "--accent": p.accentColor } as React.CSSProperties}
+            >
               {inner}
             </div>
           );
