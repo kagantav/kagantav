@@ -230,17 +230,16 @@
 .devices3d {
   position: relative;
   z-index: 3; /* the DOM iPhone rides above the MacBook canvas */
-  perspective: 1500px;
   min-width: 0;
 }
 
+/* r32: no perspective / preserve-3d / base tilt — a 3D-transformed subtree
+   rasterises its DOM screen content at reduced resolution (soft phone).
+   Flat keeps the phone crisp at native dpr. */
 .devices {
   position: relative;
   width: min(100%, 900px);
   aspect-ratio: 1384 / 993;
-  transform-style: preserve-3d;
-  transform: rotateY(-5deg) rotateX(1.6deg);
-  will-change: transform;
 }
 
 /* one MacBook+iPhone pair — two of these alternate on stage */
@@ -269,7 +268,6 @@
 .phoneFloat {
   position: absolute;
   inset: 0;
-  will-change: transform;
 }
 
 /* screen opening measured from macbook.png alpha: 13.3% / 3.73%, 74% × 66.55% */
@@ -293,9 +291,10 @@
   width: 22%;
   aspect-ratio: 658 / 1333;
   z-index: 3;
-  transform: translateZ(60px) rotateY(-3deg);
-  will-change: transform;
-  filter: drop-shadow(0 20px 30px rgba(0, 0, 0, 0.62));
+  /* EXPERIMENT r32: was translateZ(60px) rotateY(-3deg) + will-change +
+     drop-shadow → the 3D compositor layer rasterised the screen content
+     at reduced resolution (soft). Flatten to a plain 2D element so it
+     rasterises at native dpr (crisp). */
 }
 
 /* screen opening measured from iphone.png alpha: 7.75% / 3.0%, 84.65% × 94.1% */

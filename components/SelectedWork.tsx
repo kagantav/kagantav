@@ -108,7 +108,7 @@ function quadMatrix3d(
 /** bumped with every motion-fix round — printed to the console and shown
  *  in the ?swdebug HUD so there is never any doubt WHICH code is running
  *  in the browser being tested */
-const BUILD_TAG = "r31-htmlnostore-09.07";
+const BUILD_TAG = "r32-crispphone-09.07";
 const pad = (n: number) => String(n + 1).padStart(2, "0");
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
@@ -754,12 +754,11 @@ export default function SelectedWork() {
           });
         });
 
-        /* ── whole stage drifts imperceptibly across the journey ── */
-        if (devices)
-          gsap.set(devices, {
-            rotationY: -5 + p * 4,
-            rotationX: 1.6 - p * 1.2,
-          });
+        /* r32: the device group used to hold a -5deg/1.6deg 3D tilt, but a
+           3D-transformed (preserve-3d) subtree rasterises its DOM screen
+           content at reduced resolution → the soft phone. Keep it flat so
+           the phone renders crisp at native dpr. */
+        if (devices) gsap.set(devices, { rotationY: 0, rotationX: 0 });
       };
 
       const mm = gsap.matchMedia();
