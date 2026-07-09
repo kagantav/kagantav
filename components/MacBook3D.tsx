@@ -29,7 +29,8 @@ const MODEL_URL = "/assets/macbook-ultra-concept/source/MacBook Ultra.glb";
 const PHONE_MODEL_URL = "/assets/iphone/iphone_16_-_free.glb";
 const PHONE_WIDTH = 0.76; // world units — a companion beside the mac
 const PHONE_SCREEN_MESH = "Object_18"; // flat display plane in this GLB
-const PHONE_POS = { x: 1.5, y: 0.52, z: 2.0 };
+const PHONE_SCREEN_INSET = 0.95; // overlay sits WITHIN the display, no bezel bleed
+const PHONE_POS = { x: 1.55, y: 0.5, z: 2.05 };
 const N = FEATURED_PROJECTS.length;
 const TRANSITIONS = N - 1;
 
@@ -1074,11 +1075,11 @@ function Phone({
        reel (RISE-like), plus an idle float + pointer parallax. Frozen during
        the live dive so the dived scene never drifts. */
     const liveGate = 1 - clamp01(swScroll.live / 0.2);
-    const turn = (swScroll.smooth - 0.5) * 0.24; // gentle ±0.12rad across the reel
+    const turn = (swScroll.smooth - 0.5) * 0.4; // ±0.2rad across the reel — clear 3D
     g.rotation.set(
-      -0.04 + py * 0.05 * liveGate + Math.sin(t * 0.7) * 0.02 * liveGate,
-      -0.2 + turn + px * 0.08 * liveGate,
-      Math.sin(t * 0.5) * 0.014 * liveGate
+      -0.05 + py * 0.06 * liveGate + Math.sin(t * 0.7) * 0.025 * liveGate,
+      -0.26 + turn + px * 0.1 * liveGate,
+      Math.sin(t * 0.5) * 0.016 * liveGate
     );
     g.position.set(
       PHONE_POS.x + px * 0.06 * liveGate,
@@ -1354,8 +1355,8 @@ function CameraRig({
         ph.rig.anchor.updateWorldMatrix(true, false);
         ph.rig.anchor.getWorldPosition(v.aPos);
         ph.rig.anchor.getWorldQuaternion(v.q);
-        const sw = ph.rig.screenWorld.w / 2;
-        const sh = ph.rig.screenWorld.h / 2;
+        const sw = (ph.rig.screenWorld.w * PHONE_SCREEN_INSET) / 2;
+        const sh = (ph.rig.screenWorld.h * PHONE_SCREEN_INSET) / 2;
         const pscl = Math.sqrt(
           ph.rig.anchor.matrixWorld.elements[0] ** 2 +
             ph.rig.anchor.matrixWorld.elements[1] ** 2 +
