@@ -57,7 +57,8 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
     // Shopify doğrulandı (cdn/shop varlıkları); kalanını Kağan teyit edecek
     stack: ["Shopify", "E-Ticaret", "UI/UX", "SEO"],
     desktopMedia: { type: "video", src: "/assets/projects/miyavhav/desktop.mp4" },
-    mobileMedia: { type: "video", src: "/assets/projects/miyavhav/mobile.mp4" },
+    // ?v=2 → cache-bust the 2x re-capture (same filename would serve stale)
+    mobileMedia: { type: "video", src: "/assets/projects/miyavhav/mobile.mp4?v=2" },
     // site X-Frame-Options: DENY gönderiyor → gömülü önizleme kapalı
     liveUrl: "https://miyavhavtr.com",
     liveEmbed: false,
@@ -74,7 +75,8 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
     // TODO(kağan): gerçek stack'i teyit et
     stack: ["3D / CGI", "Animasyon", "UI/UX", "SEO"],
     desktopMedia: { type: "video", src: "/assets/projects/bilitro3d/desktop.mp4" },
-    mobileMedia: { type: "video", src: "/assets/projects/bilitro3d/mobile.mp4" },
+    // ?v=2 → cache-bust the 2x re-capture (same filename would serve stale)
+    mobileMedia: { type: "video", src: "/assets/projects/bilitro3d/mobile.mp4?v=2" },
     // X-Frame-Options: SAMEORIGIN → gömülü önizleme kapalı
     liveUrl: "https://bilitro3d.com",
     liveEmbed: false,
