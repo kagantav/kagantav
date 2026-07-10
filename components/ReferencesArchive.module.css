@@ -1,10 +1,9 @@
 /* ════════════════════════════════════════════════
-   References Archive — living "wall of work" (marquee lanes)
+   References Archive — 3D depth gallery (scroll-raised, cursor-tilt)
    ════════════════════════════════════════════════ */
 .section {
   position: relative;
-  overflow: hidden;
-  padding: clamp(72px, 9vh, 120px) 0 clamp(90px, 12vh, 150px);
+  padding: clamp(72px, 9vh, 120px) var(--gutter) clamp(110px, 14vh, 180px);
   background:
     radial-gradient(60% 30% at 50% 0%, rgba(216, 169, 79, 0.05), transparent 70%),
     var(--bg);
@@ -12,7 +11,7 @@
 
 .head {
   max-width: 640px;
-  margin: 0 var(--gutter) clamp(40px, 5vh, 66px);
+  margin-bottom: clamp(44px, 6vh, 80px);
 }
 
 .eyebrow {
@@ -67,88 +66,61 @@
   max-width: 52ch;
 }
 
-/* ── The wall (full-bleed, fades at both edges) ── */
-.wall {
+/* ── 3D depth columns ──────────────────────────── */
+.grid3d {
+  display: flex;
+  align-items: flex-start;
+  gap: clamp(16px, 1.8vw, 30px);
+}
+
+.col {
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: clamp(14px, 1.5vw, 24px);
-  -webkit-mask-image: linear-gradient(
-    90deg,
-    transparent 0,
-    #000 7%,
-    #000 93%,
-    transparent 100%
-  );
-  mask-image: linear-gradient(
-    90deg,
-    transparent 0,
-    #000 7%,
-    #000 93%,
-    transparent 100%
-  );
+  gap: clamp(18px, 2vw, 34px);
+  perspective: 1500px; /* depth for each card's scroll-raise */
+  perspective-origin: 50% 40%;
+}
+/* stagger the columns so it never reads as a flat grid */
+.col[data-col="1"] {
+  margin-top: clamp(38px, 7vw, 120px);
+}
+.col[data-col="2"] {
+  margin-top: clamp(16px, 3vw, 56px);
 }
 
-.lane {
-  overflow: hidden;
-}
-
-.track {
-  display: flex;
-  gap: clamp(14px, 1.5vw, 24px);
-  width: max-content;
-  animation: marquee-l var(--dur, 60s) linear infinite;
-  will-change: transform;
-}
-.lane[data-dir="r"] .track {
-  animation-name: marquee-r;
-}
-/* pause the whole lane when the pointer is on it */
-.lane:hover .track {
-  animation-play-state: paused;
-}
-
-@keyframes marquee-l {
-  from {
-    transform: translate3d(0, 0, 0);
-  }
-  to {
-    transform: translate3d(-50%, 0, 0);
-  }
-}
-@keyframes marquee-r {
-  from {
-    transform: translate3d(-50%, 0, 0);
-  }
-  to {
-    transform: translate3d(0, 0, 0);
-  }
-}
-
-/* ── Card = the screenshot ─────────────────────── */
+/* the card carries the scroll-raise transform (set by GSAP) */
 .card {
   --accent: #d8a94f;
   position: relative;
-  flex: 0 0 auto;
-  width: clamp(300px, 25vw, 410px);
+  display: block;
   aspect-ratio: 16 / 10;
-  border-radius: 15px;
-  overflow: hidden;
+  border-radius: 16px;
   text-decoration: none;
   color: inherit;
+  perspective: 820px; /* depth for the inner cursor-tilt */
+  transform-style: preserve-3d;
+  will-change: transform, opacity;
+}
+
+/* the tilt layer follows the cursor in 3D; it holds the whole visual */
+.tilt {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  transform-style: preserve-3d;
   background: #0e0a06;
   border: 1px solid rgba(216, 169, 79, 0.14);
-  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.4);
-  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
-    border-color 0.4s ease, box-shadow 0.4s ease;
-  will-change: transform;
+  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.46);
+  transition: transform 0.24s ease, border-color 0.4s ease, box-shadow 0.4s ease;
 }
-.card:hover {
-  transform: translateY(-8px) scale(1.03);
-  z-index: 3;
+.card:hover .tilt {
   border-color: color-mix(in srgb, var(--accent) 62%, transparent);
   box-shadow:
-    0 34px 66px rgba(0, 0, 0, 0.62),
-    0 0 48px color-mix(in srgb, var(--accent) 26%, transparent);
+    0 40px 80px rgba(0, 0, 0, 0.62),
+    0 0 56px color-mix(in srgb, var(--accent) 26%, transparent);
 }
 
 .shotImg {
@@ -158,12 +130,12 @@
   height: 100%;
   object-fit: cover;
   object-position: top center;
-  transform: scale(1.02);
+  transform: scale(1.03);
   transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), filter 0.5s ease;
   filter: saturate(1.02) brightness(0.9);
 }
 .card:hover .shotImg {
-  transform: scale(1.08);
+  transform: scale(1.09);
   filter: saturate(1.06) brightness(1);
 }
 
@@ -174,7 +146,7 @@
   place-items: center;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: clamp(40px, 5vw, 64px);
+  font-size: clamp(40px, 5vw, 66px);
   letter-spacing: 0.05em;
   background: linear-gradient(
     180deg,
@@ -192,8 +164,8 @@
   pointer-events: none;
   background: linear-gradient(
     180deg,
-    rgba(4, 3, 2, 0.28) 0%,
-    transparent 26%,
+    rgba(4, 3, 2, 0.3) 0%,
+    transparent 24%,
     transparent 44%,
     rgba(4, 3, 2, 0.64) 80%,
     rgba(4, 3, 2, 0.9) 100%
@@ -219,8 +191,8 @@
 
 .index {
   position: absolute;
-  top: 12px;
-  right: 14px;
+  top: 13px;
+  right: 15px;
   z-index: 2;
   font-family: var(--font-display);
   font-size: 11px;
@@ -237,7 +209,7 @@
   flex-direction: column;
   justify-content: flex-end;
   gap: 8px;
-  padding: clamp(13px, 1.2vw, 18px);
+  padding: clamp(14px, 1.3vw, 20px);
   pointer-events: none;
 }
 .cat {
@@ -270,7 +242,7 @@
 .name {
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: clamp(17px, 1.5vw, 22px);
+  font-size: clamp(18px, 1.6vw, 24px);
   line-height: 1.08;
   color: #fff;
   text-shadow: 0 2px 14px rgba(0, 0, 0, 0.6);
@@ -278,8 +250,8 @@
 
 .arrow {
   flex: none;
-  width: 26px;
-  height: 26px;
+  width: 27px;
+  height: 27px;
   padding: 6px;
   border-radius: 50%;
   color: #0a0705;
@@ -293,25 +265,32 @@
   transform: translate(0, 0) scale(1);
 }
 
-/* ── Reduced motion: stop the drift, let each lane scroll by hand ── */
-@media (prefers-reduced-motion: reduce) {
-  .track {
-    animation: none;
+/* ── Responsive ────────────────────────────────── */
+@media (max-width: 900px) {
+  .grid3d {
+    gap: clamp(14px, 2.4vw, 22px);
   }
-  .lane {
-    overflow-x: auto;
-    scrollbar-width: none;
+  .col {
+    gap: clamp(14px, 3vw, 22px);
   }
-  .lane::-webkit-scrollbar {
-    display: none;
+  .col[data-col="1"] {
+    margin-top: clamp(24px, 8vw, 60px);
+  }
+  .col[data-col="2"] {
+    margin-top: clamp(10px, 4vw, 30px);
   }
 }
 
-@media (max-width: 680px) {
-  .card {
-    width: clamp(230px, 72vw, 320px);
+@media (max-width: 640px) {
+  .grid3d {
+    flex-direction: column;
+    gap: 18px;
   }
-  /* touch can't hover — keep info readable */
+  .col {
+    margin-top: 0 !important;
+    perspective: 1000px;
+  }
+  /* touch can't hover — surface the label */
   .cat {
     opacity: 1;
     transform: none;
