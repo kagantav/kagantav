@@ -1062,21 +1062,23 @@ function usePhoneRig(): PhoneRig {
     /* ONE shared graphite material for the whole body — far cheaper than
        the GLB's 40+ MeshPhysicalMaterials (fewer shader/state changes per
        frame → smoother scroll) and a clean space-black that fits the stage.
-       Transparent so the phone can fade out on transitions (come-and-go
-       like the laptops). The display gets its own black material. */
+       OPAQUE on purpose: a transparent phone made of ~41 separate meshes
+       self-sorts per-object (renders inside-out) AND lets the bright laptop
+       bleed straight through it — both read as "the render breaks when it
+       crosses the laptop". Opaque → drawn in the depth-tested opaque pass,
+       so it is always coherent and correctly occludes the laptop behind it.
+       The phone no longer fades/slides; the SCREEN crossfades its media on
+       each project change instead. The display gets its own black material. */
     const bodyMat = new THREE.MeshStandardMaterial({
       color: "#34343a",
       metalness: 0.88,
       roughness: 0.35,
-      transparent: true,
     });
     const screenMat = new THREE.MeshStandardMaterial({
       color: "#050505",
       metalness: 0.35,
       roughness: 0.34,
-      transparent: true,
     });
-    const fadeMats: THREE.Material[] = [bodyMat, screenMat];
     root.traverse((o) => {
       const m = o as THREE.Mesh;
       if (!m.isMesh) return;
@@ -1103,10 +1105,9 @@ function usePhoneRig(): PhoneRig {
     }
 
     const setOpacity = (v: number) => {
-      const t = clamp01(v);
-      root.visible = t > 0.02; // fully faded → leave the render list (perf)
-      bodyMat.opacity = t;
-      screenMat.opacity = t;
+      // opaque body → no alpha fade; visibility only (culls during the live
+      // dive, when the frozen scene is CSS-zoomed into the laptop screen)
+      root.visible = clamp01(v) > 0.02;
     };
 
     return { root, anchor, screenWorld, setOpacity };
@@ -1148,26 +1149,23 @@ function Phone({
        project is settled; slides down + back and fades out through a
        transition; returns with the next project — whose mobile media has
        already swapped while the phone was hidden, so no visible lag. */
-    const absPos = swScroll.smooth * (N - 1);
-    const dP = absPos - Math.round(absPos);
-    const show = 1 - smoother(clamp01((Math.abs(dP) - 0.06) / 0.24));
-    rig.setOpacity(show * liveGate);
-    const gone = 1 - show;
-
-    /* GENTLE come-and-go: the phone stays essentially face-on and simply
-       fades with a small downward drift. The old choreography rotated it
-       ~31° and slid it a whole body-height, which pulled the FLAT DOM screen
-       overlay off the curved 3D body ("doku bozuluyor / üst kayboluyor"). At
-       ≤7° the overlay stays glued, so the arrival reads clean and premium. */
+    /* PERSISTENT SOLID COMPANION: no come-and-go slide, no alpha. The opaque
+       body stays put and always renders coherently — it can never self-sort
+       inside-out or let the laptop bleed through it (both of which the old
+       transparent come-and-go did every time it crossed the laptop). The
+       SCREEN crossfades its media on each project change (SelectedWork),
+       which reads as the phone switching projects. Only a soft idle float +
+       pointer parallax for life; culled while the live dive owns the scene. */
+    rig.setOpacity(liveGate);
     g.rotation.set(
       -0.05 + py * 0.05 * liveGate + Math.sin(t * 0.7) * 0.022 * liveGate,
-      -0.24 + px * 0.09 * liveGate - gone * 0.12,
+      -0.24 + px * 0.09 * liveGate,
       Math.sin(t * 0.5) * 0.015 * liveGate
     );
     g.position.set(
-      PHONE_POS.x + px * 0.05 * liveGate + gone * 0.12,
-      PHONE_POS.y + Math.sin(t * 0.9 + 1.3) * 0.045 * liveGate - gone * 0.34,
-      PHONE_POS.z - gone * 0.14
+      PHONE_POS.x + px * 0.05 * liveGate,
+      PHONE_POS.y + Math.sin(t * 0.9 + 1.3) * 0.045 * liveGate,
+      PHONE_POS.z
     );
   });
 
