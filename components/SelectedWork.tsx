@@ -112,7 +112,7 @@ function quadMatrix3d(
 /** bumped with every motion-fix round — printed to the console and shown
  *  in the ?swdebug HUD so there is never any doubt WHICH code is running
  *  in the browser being tested */
-const BUILD_TAG = "r36-phonecomego-09.07";
+const BUILD_TAG = "r37-screenfit-10.07";
 const pad = (n: number) => String(n + 1).padStart(2, "0");
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
@@ -903,10 +903,12 @@ export default function SelectedWork() {
             const pq = swScroll.phoneQuad;
             const absPos = swScroll.smooth * TRANSITIONS;
             const dP = absPos - Math.round(absPos);
-            /* match the 3D phone's come-and-go: the screen fades fully out
-               through a transition (the phone has slid away) and back in
-               once settled — media swaps while hidden, so no visible cut */
-            const settleP = 1 - smooth5(clamp01((Math.abs(dP) - 0.06) / 0.24));
+            /* match the 3D phone's gentle come-and-go, but fade the crisp
+               screen a touch FASTER (band 0.05→0.23 vs the body's 0.06→0.30)
+               so the DOM screen is never more opaque than the graphite body
+               behind it — no screen floating ahead of a half-faded phone.
+               Media swaps while hidden, so no visible cut. */
+            const settleP = 1 - smooth5(clamp01((Math.abs(dP) - 0.05) / 0.18));
             const a =
               (pq.on ? 1 : 0) * settleP * (1 - clamp01(swScroll.live / 0.08));
             const pvid = phoneOvVideoRef.current;

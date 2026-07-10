@@ -646,6 +646,34 @@ export function syncVideoPhase(v: HTMLVideoElement) {
   else v.addEventListener("loadedmetadata", apply, { once: true });
 }
 
+/* object-fit: cover / top for a WebGL texture: crop the overflowing axis so
+   the media fills the plane WITHOUT stretching, anchored to the TOP (browser
+   viewports read top-down). Matches the DOM overlay's object-fit:cover so the
+   soft WebGL screen and the crisp DOM overlay frame the site identically —
+   the old fixed-fraction crop stretched the site vertically ("aşağı genişleme"
+   during the incoming laptop's approach, before the DOM overlay took over). */
+function applyCoverCropTop(
+  t: THREE.Texture,
+  mediaW: number,
+  mediaH: number,
+  planeAspect: number
+) {
+  if (!mediaW || !mediaH || !isFinite(planeAspect)) return;
+  const mediaAspect = mediaW / mediaH;
+  if (mediaAspect > planeAspect) {
+    // media wider than the plane → crop the sides, keep full height, centered
+    const r = planeAspect / mediaAspect;
+    t.repeat.set(r, 1);
+    t.offset.set((1 - r) / 2, 0);
+  } else {
+    // media taller than the plane → crop the bottom, keep full width, top-anchored
+    const r = mediaAspect / planeAspect;
+    t.repeat.set(1, r);
+    t.offset.set(0, 1 - r); // flipY: V=1 is the image top → show [1-r, 1]
+  }
+  t.needsUpdate = true;
+}
+
 function ScreenPlane({
   rig,
   project,
@@ -676,18 +704,13 @@ function ScreenPlane({
 
   const tex = useMemo(() => {
     const m = project.desktopMedia;
-    /* real captures show only the site BELOW the chrome strip — crop to
-       the top-anchored viewport portion, exactly like the DOM overlay's
-       object-fit: cover / top */
-    const cropToViewport = (t: THREE.Texture) => {
-      t.repeat.set(1, 1 - CHROME_FRAC);
-      t.offset.set(0, CHROME_FRAC);
-      return t;
-    };
+    /* raw texture; the aspect-correct cover crop (matching the DOM overlay's
+       object-fit:cover/top) is applied in the effect below once the media's
+       natural dimensions and the screen-plane aspect are both known */
     if (m.type === "image" && m.src) {
       const t = new THREE.TextureLoader().load(m.src);
       t.colorSpace = THREE.SRGBColorSpace;
-      return cropToViewport(t);
+      return t;
     }
     if (m.type === "video" && m.src) {
       const v = document.createElement("video");
@@ -705,7 +728,7 @@ function ScreenPlane({
         const w = window as unknown as { __swVids?: Record<string, HTMLVideoElement> };
         (w.__swVids ||= {})[project.id + ":" + idx] = v;
       }
-      return cropToViewport(t);
+      return t;
     }
     return getPlaceholderTexture(project, idx);
   }, [project, idx]);
@@ -766,6 +789,39 @@ function ScreenPlane({
   const vidH = h - chrH;
   const chrY = yOff + (h - chrH) / 2;
   const vidY = yOff - chrH / 2;
+
+  /* cover-crop the site texture to the viewport plane once the media's
+     natural size is known — the plane is w × vidH, so its aspect is the
+     cover target. Keeps the WebGL screen framed exactly like the DOM
+     overlay (no vertical stretch during the incoming laptop's approach). */
+  const siteAspect = w / vidH;
+  useEffect(() => {
+    if (!hasRealMedia) return;
+    const t = tex as THREE.Texture & { __video?: HTMLVideoElement };
+    const fit = () => {
+      const src = t.image as
+        | (HTMLImageElement & HTMLVideoElement)
+        | undefined;
+      const mw = src?.videoWidth || src?.naturalWidth || src?.width || 0;
+      const mh = src?.videoHeight || src?.naturalHeight || src?.height || 0;
+      if (mw && mh) {
+        applyCoverCropTop(t, mw, mh, siteAspect);
+        return true;
+      }
+      return false;
+    };
+    if (fit()) return;
+    const v = t.__video;
+    if (v) {
+      v.addEventListener("loadedmetadata", fit, { once: true });
+      return () => v.removeEventListener("loadedmetadata", fit);
+    }
+    const im = t.image as HTMLImageElement | undefined;
+    if (im && "addEventListener" in im) {
+      im.addEventListener("load", fit, { once: true });
+      return () => im.removeEventListener("load", fit);
+    }
+  }, [tex, siteAspect, hasRealMedia]);
 
   return createPortal(
     <>
@@ -1098,15 +1154,20 @@ function Phone({
     rig.setOpacity(show * liveGate);
     const gone = 1 - show;
 
+    /* GENTLE come-and-go: the phone stays essentially face-on and simply
+       fades with a small downward drift. The old choreography rotated it
+       ~31° and slid it a whole body-height, which pulled the FLAT DOM screen
+       overlay off the curved 3D body ("doku bozuluyor / üst kayboluyor"). At
+       ≤7° the overlay stays glued, so the arrival reads clean and premium. */
     g.rotation.set(
       -0.05 + py * 0.05 * liveGate + Math.sin(t * 0.7) * 0.022 * liveGate,
-      -0.24 + px * 0.09 * liveGate - gone * 0.55,
+      -0.24 + px * 0.09 * liveGate - gone * 0.12,
       Math.sin(t * 0.5) * 0.015 * liveGate
     );
     g.position.set(
-      PHONE_POS.x + px * 0.05 * liveGate + gone * 0.35,
-      PHONE_POS.y + Math.sin(t * 0.9 + 1.3) * 0.045 * liveGate - gone * 0.95,
-      PHONE_POS.z - gone * 0.7
+      PHONE_POS.x + px * 0.05 * liveGate + gone * 0.12,
+      PHONE_POS.y + Math.sin(t * 0.9 + 1.3) * 0.045 * liveGate - gone * 0.34,
+      PHONE_POS.z - gone * 0.14
     );
   });
 
