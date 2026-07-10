@@ -1703,9 +1703,9 @@ export default function MacBook3D({
             color="#000000"
             renderOrder={-1}
           />
-          {/* companion iPhone — real 3D model; its website pixels come from
-              the crisp DOM overlay in SelectedWork (native dpr) */}
-          <Phone reg={phone} settledIdx={settledIdx} />
+          {/* the companion iPhone is a flat DOM element (iphone.png frame +
+              mobile media) rendered by SelectedWork, NOT a 3D model — the
+              WebGL phone had unfixable DOM-overlay occlusion/sorting issues */}
         </StageRoot>
 
         <CameraRig reg={reg} phone={phone} />
@@ -1716,4 +1716,3 @@ export default function MacBook3D({
 }
 
 useGLTF.preload(MODEL_URL);
-useGLTF.preload(PHONE_MODEL_URL);

@@ -313,6 +313,10 @@
   object-fit: contain;
   pointer-events: none;
   z-index: 2;
+  /* grounding shadow follows the iphone.png silhouette (2D filter on the
+     FRAME image only — the screen is a separate element, so it stays crisp
+     at native dpr, unlike the r32 3D-transform layer that softened it) */
+  filter: drop-shadow(0 30px 44px rgba(0, 0, 0, 0.6));
 }
 
 /* full-stage canvas hosting the 3D MacBooks */
@@ -516,15 +520,8 @@
   );
 }
 
-/* old flat DOM phone: kept mounted so its refs still guard applyVisual
-   AND its grid column still holds the layout (the panel stays on the
-   right), but hidden — the crisp 3D iPhone replaces it visually */
-.devices3d {
-  visibility: hidden;
-}
-
-/* ── companion iPhone screen overlay — crisp DOM media matrix3d-mapped
-   onto the 3D phone's projected display quad (native dpr, not canvas dpr) ── */
+/* ── (removed) 3D-phone screen overlay styles — the phone is the flat DOM
+   device again (see .phoneWrap / .phoneScreen / .frameImg above) ── */
 .phoneOvHost {
   position: absolute;
   inset: 0;
