@@ -108,7 +108,7 @@ function quadMatrix3d(
 /** bumped with every motion-fix round — printed to the console and shown
  *  in the ?swdebug HUD so there is never any doubt WHICH code is running
  *  in the browser being tested */
-const BUILD_TAG = "r40-phonestatusbar-10.07";
+const BUILD_TAG = "r41-phonefullbleed-10.07";
 const pad = (n: number) => String(n + 1).padStart(2, "0");
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
@@ -229,8 +229,14 @@ function DevicePair({
                 interactive={false}
               />
             </div>
-            {/* iOS status bar around the Dynamic Island (time + radios) */}
-            <div className={styles.phoneStatus} aria-hidden="true">
+            {/* iOS status bar around the Dynamic Island (time + radios) —
+                DARK over light site tops, white over dark (adaptive) */}
+            <div
+              className={`${styles.phoneStatus} ${
+                project.phoneStatusDark ? styles.phoneStatusDarkText : ""
+              }`}
+              aria-hidden="true"
+            >
               <span className={styles.phoneTime}>14:32</span>
               <span className={styles.phoneStatIcons}>
                 <svg className={styles.phoneSignal} viewBox="0 0 18 12">
