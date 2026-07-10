@@ -45,6 +45,8 @@ export interface FeaturedProject {
   /** gold-family accent used for the scene glow + placeholder lighting */
   accentColor: string;
   year: string;
+  /** true → hide the companion iPhone for this project (desktop-only vitrine) */
+  noMobile?: boolean;
 }
 
 export const FEATURED_PROJECTS: FeaturedProject[] = [
@@ -117,11 +119,13 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
     name: "NG Equipments",
     category: "Endüstriyel — İş Makinesi",
     description:
-      "İş makinesi ataşmanları üreten NG Group'un kurumsal sitesi — güçlü sahne görselleri, ürün vitrini ve endüstriyel, güven veren bir marka dili.",
-    // TODO(kağan): stack teyit
-    stack: ["Kurumsal Site", "Katalog", "SEO"],
-    desktopMedia: { type: "image", src: "/assets/projects/ngequipments/desktop.jpg" },
+      "İş makinesi ataşmanları üreten NG Group'un çok dilli kurumsal sitesi. En güçlü yanı: yönetici panelinden yönetilen gömülü dil sistemi — sayfadaki tüm statik ve dinamik metinler, firma sahiplerince istenen her dilde eklenip düzenlenebiliyor.",
+    stack: ["Çok Dilli (i18n)", "Yönetici Paneli", "Kurumsal Site", "SEO"],
+    // ?v=2 → cache-bust the re-capture that now includes the site header
+    desktopMedia: { type: "image", src: "/assets/projects/ngequipments/desktop.jpg?v=2" },
     mobileMedia: { type: "image", src: "/assets/projects/ngequipments/mobile.jpg" },
+    // sadece masaüstü vitrini — mobil (telefon) görünümü gizli
+    noMobile: true,
     liveUrl: "https://ngequipments.com",
     liveEmbed: false,
     accentColor: "#c98f3a",

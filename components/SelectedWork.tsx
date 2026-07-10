@@ -108,7 +108,7 @@ function quadMatrix3d(
 /** bumped with every motion-fix round — printed to the console and shown
  *  in the ?swdebug HUD so there is never any doubt WHICH code is running
  *  in the browser being tested */
-const BUILD_TAG = "r45-reorder-10.07";
+const BUILD_TAG = "r46-ng-desktoponly-10.07";
 const pad = (n: number) => String(n + 1).padStart(2, "0");
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
@@ -215,8 +215,14 @@ function DevicePair({
       ref={refs.pair}
       className={`${styles.pair} ${hiddenAtRest ? styles.pairResting : ""}`}
     >
-      {/* iPhone — companion device; the MacBook is the 3D model behind */}
-      <div ref={refs.phone} className={styles.phoneWrap} data-sw-phone="">
+      {/* iPhone — companion device; the MacBook is the 3D model behind.
+          Kept mounted even when hidden (noMobile) so applyVisual's ref
+          guard stays satisfied; CSS just display:none's it. */}
+      <div
+        ref={refs.phone}
+        className={`${styles.phoneWrap} ${project.noMobile ? styles.phoneHidden : ""}`}
+        data-sw-phone=""
+      >
         <div className={styles.phoneFloat} data-sw-float="phone">
           <div className={styles.phoneScreen}>
             {/* the mobile site fills the whole glass — no status bar */}

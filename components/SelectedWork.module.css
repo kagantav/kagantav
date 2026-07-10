@@ -326,6 +326,12 @@
   object-position: top center;
 }
 
+/* desktop-only projects (noMobile): the phone element stays in the DOM so
+   applyVisual's ref guard holds, but it is not shown */
+.phoneHidden {
+  display: none !important;
+}
+
 .frameImg {
   object-fit: contain;
   pointer-events: none;
