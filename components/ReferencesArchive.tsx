@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import { useLayoutEffect, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { ARCHIVE_PROJECTS } from "./projects";
@@ -26,64 +20,29 @@ const initialsOf = (name: string) =>
     .toUpperCase();
 
 /**
- * References Archive — an editorial index of shipped work. Each project is a
- * typographic row; hovering one floats its screenshot next to the cursor.
- * Scales to ~20 entries: just append to ARCHIVE_PROJECTS in projects.ts.
+ * References Archive — an image-forward gallery of shipped work. Each card is
+ * the site screenshot itself; project info sits on a scrim over it and lifts
+ * on hover. Scales to ~20 entries: just append to ARCHIVE_PROJECTS.
  */
 export default function ReferencesArchive() {
   const ref = useRef<HTMLElement>(null);
-  const previewRef = useRef<HTMLDivElement>(null);
-  const [active, setActive] = useState(-1);
 
-  /* cursor-follow preview: a single transform-only element, eased in a rAF
-     loop (never written per-mousemove) so it glides smoothly */
-  const target = useRef({ x: 0, y: 0 });
-  const pos = useRef({ x: 0, y: 0, seeded: false });
-  const onMove = useCallback((e: React.MouseEvent) => {
-    target.current.x = e.clientX;
-    target.current.y = e.clientY;
-    if (!pos.current.seeded) {
-      pos.current.x = e.clientX;
-      pos.current.y = e.clientY;
-      pos.current.seeded = true;
-    }
-  }, []);
-
-  useEffect(() => {
-    let raf = 0;
-    const tick = () => {
-      const t = target.current;
-      const p = pos.current;
-      p.x += (t.x - p.x) * 0.16;
-      p.y += (t.y - p.y) * 0.16;
-      const el = previewRef.current;
-      if (el) {
-        const tilt = Math.max(-7, Math.min(7, (t.x - p.x) * 0.25));
-        el.style.transform = `translate3d(${p.x}px, ${p.y}px, 0) translate(-50%, -50%) rotate(${tilt}deg)`;
-      }
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, []);
-
-  /* rows stagger in on scroll */
   useLayoutEffect(() => {
     const root = ref.current;
     if (!root) return;
     const ctx = gsap.context(() => {
       const mm = gsap.matchMedia();
       mm.add("(prefers-reduced-motion: no-preference)", () => {
-        gsap.utils.toArray<HTMLElement>("[data-ra-row]").forEach((el, i) => {
+        gsap.utils.toArray<HTMLElement>("[data-ra-card]").forEach((el, i) => {
           gsap.from(el, {
             autoAlpha: 0,
-            y: 26,
-            duration: 0.6,
-            delay: (i % 6) * 0.05,
+            y: 40,
+            duration: 0.7,
+            delay: (i % 3) * 0.09,
             ease: "power2.out",
             scrollTrigger: {
               trigger: el,
-              start: "top bottom-=10",
+              start: "top bottom-=40",
               toggleActions: "play none none reverse",
             },
           });
@@ -93,16 +52,8 @@ export default function ReferencesArchive() {
     return () => ctx.revert();
   }, []);
 
-  const activeAccent =
-    active >= 0 ? ARCHIVE_PROJECTS[active].accentColor : "#d8a94f";
-
   return (
-    <section
-      id="references"
-      ref={ref}
-      className={styles.section}
-      onMouseMove={onMove}
-    >
+    <section id="references" ref={ref} className={styles.section}>
       <header className={styles.head}>
         <p className={styles.eyebrow}>
           <span />
@@ -117,93 +68,71 @@ export default function ReferencesArchive() {
         </p>
       </header>
 
-      <ul
-        className={styles.index}
-        data-active={active >= 0 ? "" : undefined}
-        onMouseLeave={() => setActive(-1)}
-      >
+      <div className={styles.grid}>
         {ARCHIVE_PROJECTS.map((p, i) => {
           const inner = (
             <>
-              <span className={styles.num}>{pad(i + 1)}</span>
-              <span className={styles.main}>
-                <span className={styles.name}>{p.name}</span>
-                <span className={styles.meta}>
-                  {p.category} · {p.year}
-                </span>
-              </span>
-              <span className={styles.stack}>{p.stack.join(" · ")}</span>
-              <span className={styles.thumbMini} aria-hidden="true">
+              <div className={styles.shot}>
                 {p.thumb ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={p.thumb} alt="" loading="lazy" />
+                  <img
+                    className={styles.shotImg}
+                    src={p.thumb}
+                    alt={p.name}
+                    loading="lazy"
+                  />
                 ) : (
-                  <span>{initialsOf(p.name)}</span>
+                  <span className={styles.shotMark}>{initialsOf(p.name)}</span>
                 )}
-              </span>
-              <svg className={styles.arrow} viewBox="0 0 14 14" aria-hidden="true">
-                <path
-                  d="M2 12L12 2M12 2H4.5M12 2v7.5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
+                <i className={styles.scrim} aria-hidden="true" />
+                <i className={styles.sheen} aria-hidden="true" />
+                <span className={styles.index}>{pad(i + 1)}</span>
+              </div>
+
+              <div className={styles.info}>
+                <div className={styles.infoTop}>
+                  <span className={styles.cat}>{p.category}</span>
+                  <span className={styles.year}>{p.year}</span>
+                </div>
+                <div className={styles.infoBottom}>
+                  <h3 className={styles.name}>{p.name}</h3>
+                  <svg className={styles.arrow} viewBox="0 0 14 14" aria-hidden="true">
+                    <path
+                      d="M2 12L12 2M12 2H4.5M12 2v7.5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+                <p className={styles.stack}>{p.stack.join(" · ")}</p>
+              </div>
             </>
           );
-          const common = {
-            className: styles.row,
-            onMouseEnter: () => setActive(i),
-          };
-          return (
-            <li
+
+          const cls = styles.card;
+          const style = { "--accent": p.accentColor } as React.CSSProperties;
+
+          return p.liveUrl ? (
+            <a
               key={p.id}
-              data-ra-row=""
-              style={{ "--accent": p.accentColor } as React.CSSProperties}
+              href={p.liveUrl}
+              target="_blank"
+              rel="noreferrer"
+              className={cls}
+              data-ra-card=""
+              style={style}
             >
-              {p.liveUrl ? (
-                <a href={p.liveUrl} target="_blank" rel="noreferrer" {...common}>
-                  {inner}
-                </a>
-              ) : (
-                <div {...common}>{inner}</div>
-              )}
-            </li>
+              {inner}
+            </a>
+          ) : (
+            <div key={p.id} className={cls} data-ra-card="" style={style}>
+              {inner}
+            </div>
           );
         })}
-      </ul>
-
-      {/* floating cursor preview (desktop hover only) */}
-      <div
-        ref={previewRef}
-        className={styles.preview}
-        data-show={active >= 0 ? "" : undefined}
-        style={{ "--accent": activeAccent } as React.CSSProperties}
-        aria-hidden="true"
-      >
-        {ARCHIVE_PROJECTS.map((p, i) =>
-          p.thumb ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={p.id}
-              src={p.thumb}
-              alt=""
-              className={styles.previewImg}
-              data-on={active === i ? "" : undefined}
-              loading="lazy"
-            />
-          ) : (
-            <span
-              key={p.id}
-              className={styles.previewMark}
-              data-on={active === i ? "" : undefined}
-            >
-              {initialsOf(p.name)}
-            </span>
-          )
-        )}
       </div>
     </section>
   );
