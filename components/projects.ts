@@ -45,10 +45,6 @@ export interface FeaturedProject {
   /** gold-family accent used for the scene glow + placeholder lighting */
   accentColor: string;
   year: string;
-  /** true → this site's mobile top is LIGHT, so the companion iPhone's
-   *  status bar (time + radios) is drawn DARK for legibility (iOS-adaptive).
-   *  Default (omit) → white status bar for dark-topped sites. */
-  phoneStatusDark?: boolean;
 }
 
 export const FEATURED_PROJECTS: FeaturedProject[] = [
@@ -102,7 +98,6 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
     liveEmbed: false,
     accentColor: "#d8a94f",
     year: "2025",
-    phoneStatusDark: true, // white mobile header → dark status bar
   },
   {
     id: "derunstudio",
@@ -133,7 +128,6 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
     liveEmbed: false,
     accentColor: "#c98f3a",
     year: "2025",
-    phoneStatusDark: true, // light industrial top bar → dark status bar
   },
   {
     id: "goatmedia",

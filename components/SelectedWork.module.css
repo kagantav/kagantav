@@ -308,74 +308,13 @@
   overflow: hidden;
   border-radius: 13.5% / 6.6%;
   background: #050302;
-  container-type: inline-size; /* lets the status bar scale with the phone */
 }
 
-/* the site fills the WHOLE glass — the status bar never eats into it */
+/* the mobile site fills the WHOLE glass — no status bar overlay */
 .phoneSite {
   position: absolute;
   inset: 0;
   overflow: hidden;
-}
-
-/* iOS status bar: time + radios OVERLAID on the site (transparent, like a
-   real iPhone), so nothing covers the website — a soft shadow keeps them
-   legible over light or dark site tops. Time left, radios right, Dynamic
-   Island (part of the png frame) centred between them. */
-.phoneStatus {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 6.4%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 8%;
-  color: #fff;
-  z-index: 2;
-  pointer-events: none;
-  font-size: 6.4cqw;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-}
-
-.phoneTime {
-  transform: translateY(4%);
-  font-variant-numeric: tabular-nums;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
-}
-
-.phoneStatIcons {
-  display: inline-flex;
-  align-items: center;
-  gap: 4.2cqw;
-}
-
-.phoneSignal,
-.phoneWifi,
-.phoneBatt {
-  height: 6cqw;
-  width: auto;
-  fill: currentColor;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
-}
-.phoneBatt {
-  height: 6.6cqw;
-}
-
-/* light-topped sites → dark status bar (iOS-adaptive); flip the shadows to a
-   soft white halo so the dark glyphs stay crisp on a bright header */
-.phoneStatusDarkText {
-  color: #17181b;
-}
-.phoneStatusDarkText .phoneTime {
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.65);
-}
-.phoneStatusDarkText .phoneSignal,
-.phoneStatusDarkText .phoneWifi,
-.phoneStatusDarkText .phoneBatt {
-  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.7));
 }
 
 .frameImg {
