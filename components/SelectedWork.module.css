@@ -317,6 +317,15 @@
   overflow: hidden;
 }
 
+/* top-anchor the phone media: the mobile captures (860×1900) are a touch
+   taller than the glass, so a centred cover-crop ate the TOP — clipping the
+   site's header logo. Anchoring to the top keeps the header whole and crops
+   the (less important) bottom instead. */
+.phoneSite video,
+.phoneSite img {
+  object-position: top center;
+}
+
 .frameImg {
   object-fit: contain;
   pointer-events: none;
