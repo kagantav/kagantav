@@ -297,16 +297,70 @@
      rasterises at native dpr (crisp). */
 }
 
-/* screen opening measured from iphone.png alpha: 7.75% / 3.0%, 84.65% × 94.1% */
+/* glass opening, edge-to-edge to the iphone.png bezel (was inset 7.75%/3%,
+   which left the site floating inside the frame — "tam sığmıyor") */
 .phoneScreen {
   position: absolute;
-  left: 7.75%;
-  top: 3%;
-  width: 84.65%;
-  height: 94.1%;
+  left: 4.4%;
+  top: 1.5%;
+  width: 91.2%;
+  height: 97%;
   overflow: hidden;
-  border-radius: 12% / 5.4%;
+  border-radius: 13.5% / 6.6%;
   background: #050302;
+  container-type: inline-size; /* lets the status bar scale with the phone */
+}
+
+/* the captured site sits BELOW the iOS status bar (like the Mac chrome) */
+.phoneSite {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 6.4%;
+  bottom: 0;
+  overflow: hidden;
+}
+
+/* iOS status bar: time left, radios right, Dynamic Island (part of the png
+   frame) centred between them */
+.phoneStatus {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6.4%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8%;
+  color: #fff;
+  z-index: 2;
+  font-size: 6.4cqw;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.phoneTime {
+  transform: translateY(4%);
+  font-variant-numeric: tabular-nums;
+}
+
+.phoneStatIcons {
+  display: inline-flex;
+  align-items: center;
+  gap: 4.2cqw;
+  color: #fff;
+}
+
+.phoneSignal,
+.phoneWifi,
+.phoneBatt {
+  height: 6cqw;
+  width: auto;
+  fill: currentColor;
+}
+.phoneBatt {
+  height: 6.6cqw;
 }
 
 .frameImg {

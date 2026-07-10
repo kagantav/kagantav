@@ -108,7 +108,7 @@ function quadMatrix3d(
 /** bumped with every motion-fix round — printed to the console and shown
  *  in the ?swdebug HUD so there is never any doubt WHICH code is running
  *  in the browser being tested */
-const BUILD_TAG = "r39-domphone-10.07";
+const BUILD_TAG = "r40-phonestatusbar-10.07";
 const pad = (n: number) => String(n + 1).padStart(2, "0");
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
@@ -219,13 +219,36 @@ function DevicePair({
       <div ref={refs.phone} className={styles.phoneWrap} data-sw-phone="">
         <div className={styles.phoneFloat} data-sw-float="phone">
           <div className={styles.phoneScreen}>
-            <ScreenMedia
-              media={project.mobileMedia}
-              project={project}
-              variant="mobile"
-              settled={settled}
-              interactive={false}
-            />
+            {/* the site fills the glass BELOW the status bar */}
+            <div className={styles.phoneSite}>
+              <ScreenMedia
+                media={project.mobileMedia}
+                project={project}
+                variant="mobile"
+                settled={settled}
+                interactive={false}
+              />
+            </div>
+            {/* iOS status bar around the Dynamic Island (time + radios) */}
+            <div className={styles.phoneStatus} aria-hidden="true">
+              <span className={styles.phoneTime}>14:32</span>
+              <span className={styles.phoneStatIcons}>
+                <svg className={styles.phoneSignal} viewBox="0 0 18 12">
+                  <rect x="0" y="8.5" width="3" height="3.5" rx="0.6" />
+                  <rect x="5" y="6" width="3" height="6" rx="0.6" />
+                  <rect x="10" y="3" width="3" height="9" rx="0.6" />
+                  <rect x="15" y="0" width="3" height="12" rx="0.6" />
+                </svg>
+                <svg className={styles.phoneWifi} viewBox="0 0 16 12">
+                  <path d="M8 11.2 1.1 4a9.6 9.6 0 0 1 13.8 0Z" />
+                </svg>
+                <svg className={styles.phoneBatt} viewBox="0 0 26 12">
+                  <rect x="0.6" y="0.6" width="21" height="10.8" rx="2.6" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.5" />
+                  <rect x="2" y="2" width="16" height="8" rx="1.4" />
+                  <path d="M23.2 4v4c1.1-.25 1.7-.8 1.7-2s-.6-1.75-1.7-2Z" />
+                </svg>
+              </span>
+            </div>
           </div>
           <Image
             src={iphoneFrame}
