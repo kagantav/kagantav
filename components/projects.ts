@@ -67,21 +67,19 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
     year: "2026",
   },
   {
-    id: "bilitro3d",
-    name: "Bilitro 3D",
-    category: "Kurumsal — 3D Stüdyo",
+    id: "derunstudio",
+    name: "Derun Studio",
+    category: "İç Mimari — Tasarım Stüdyosu",
     description:
-      "3D modelleme, CGI animasyon ve anamorfik LED ekran içerikleri üreten stüdyonun tanıtım sitesi — sinematik hero videoları ve teknoloji odaklı bir portfolyo deneyimi.",
-    // TODO(kağan): gerçek stack'i teyit et
-    stack: ["3D / CGI", "Animasyon", "UI/UX", "SEO"],
-    desktopMedia: { type: "video", src: "/assets/projects/bilitro3d/desktop.mp4" },
-    // ?v=2 → cache-bust the 2x re-capture (same filename would serve stale)
-    mobileMedia: { type: "video", src: "/assets/projects/bilitro3d/mobile.mp4?v=2" },
-    // X-Frame-Options: SAMEORIGIN → gömülü önizleme kapalı
-    liveUrl: "https://bilitro3d.com",
+      "İç mimari ve wellbeing odaklı bir tasarım stüdyosunun tanıtım sitesi — mekânı iyileştiren, doğaya ve insana dokunan bütüncül bir marka deneyimi.",
+    // TODO(kağan): stack teyit
+    stack: ["Web Tasarım", "UI/UX", "SEO"],
+    desktopMedia: { type: "image", src: "/assets/projects/derunstudio/desktop.jpg" },
+    mobileMedia: { type: "image", src: "/assets/projects/derunstudio/mobile.jpg" },
+    liveUrl: "https://derunstudio.com",
     liveEmbed: false,
-    accentColor: "#e8c06a",
-    year: "2026",
+    accentColor: "#6fb3a4",
+    year: "2025",
   },
   {
     id: "dr-cem-akman",
@@ -100,18 +98,18 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
     year: "2025",
   },
   {
-    id: "derunstudio",
-    name: "Derun Studio",
-    category: "İç Mimari — Tasarım Stüdyosu",
+    id: "bilitro-com",
+    name: "Bilitro",
+    category: "Yazılım & Medya",
+    // TODO(kağan): metinleri güncelleyeceğiz
     description:
-      "İç mimari ve wellbeing odaklı bir tasarım stüdyosunun tanıtım sitesi — mekânı iyileştiren, doğaya ve insana dokunan bütüncül bir marka deneyimi.",
-    // TODO(kağan): stack teyit
-    stack: ["Web Tasarım", "UI/UX", "SEO"],
-    desktopMedia: { type: "image", src: "/assets/projects/derunstudio/desktop.jpg" },
-    mobileMedia: { type: "image", src: "/assets/projects/derunstudio/mobile.jpg" },
-    liveUrl: "https://derunstudio.com",
+      "Marka, dijital medya ve yazılım çözümleri sunan Bilitro'nun kurumsal tanıtım sitesi — sade, güçlü bir dijital vitrin.",
+    stack: ["Web Tasarım", "UI/UX", "İçerik"],
+    desktopMedia: { type: "image", src: "/assets/projects/bilitro-com/desktop.jpg" },
+    mobileMedia: { type: "image", src: "/assets/projects/bilitro-com/mobile.jpg" },
+    liveUrl: "https://bilitro.com",
     liveEmbed: false,
-    accentColor: "#6fb3a4",
+    accentColor: "#e8c06a",
     year: "2025",
   },
   {
@@ -130,18 +128,18 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
     year: "2025",
   },
   {
-    id: "goatmedia",
-    name: "Goat Media",
-    category: "Dijital Ajans — Dubai",
+    id: "cpa-fahrdienst",
+    name: "Cappadocia Fahrdienst",
+    category: "Lüks Transfer — İsviçre",
+    // TODO(kağan): metinleri güncelleyeceğiz
     description:
-      "Dubai merkezli bir dijital ajansın tanıtım sitesi — marka, sosyal medya ve prodüksiyon hizmetleri için modern, hareketli bir vitrin.",
-    // TODO(kağan): stack teyit
-    stack: ["Web Tasarım", "Motion", "SEO"],
-    desktopMedia: { type: "image", src: "/assets/projects/goatmedia/desktop.jpg" },
-    mobileMedia: { type: "image", src: "/assets/projects/goatmedia/mobile.jpg" },
-    liveUrl: "https://goatmediadxb.com",
+      "Havaalanı transferi ve VIP ulaşım hizmeti veren İsviçre merkezli Cappadocia Fahrdienst için kurumsal tanıtım ve online rezervasyon sitesi.",
+    stack: ["Web Tasarım", "SEO", "Rezervasyon"],
+    desktopMedia: { type: "image", src: "/assets/projects/cpa-fahrdienst/desktop.jpg" },
+    mobileMedia: { type: "image", src: "/assets/projects/cpa-fahrdienst/mobile.jpg" },
+    liveUrl: "https://cpafahrdienst.ch",
     liveEmbed: false,
-    accentColor: "#8f9bd6",
+    accentColor: "#e0a63a",
     year: "2025",
   },
 ];
@@ -164,8 +162,8 @@ export interface ArchiveProject {
    thumb = /assets/archive/<id>.jpg (erişilemeyen 2 site null → placeholder). */
 export const ARCHIVE_PROJECTS: ArchiveProject[] = [
   { id: "akman-ciftlik", name: "Akman Orman Çiftliği", category: "Doğa & Yaşam", year: "2025", stack: ["Web Tasarım", "SEO"], liveUrl: "https://akmanormanciftligi.com", accentColor: "#7fae5a", thumb: "/assets/archive/akman-ciftlik.jpg" },
-  { id: "bilitro-com", name: "Bilitro", category: "Yazılım & Medya", year: "2025", stack: ["Web Tasarım", "UI/UX"], liveUrl: "https://bilitro.com", accentColor: "#e8c06a", thumb: "/assets/archive/bilitro-com.jpg" },
-  { id: "cpa-fahrdienst", name: "Cappadocia Fahrdienst", category: "Lüks Transfer", year: "2025", stack: ["Web Tasarım", "SEO"], liveUrl: "https://cpafahrdienst.ch", accentColor: "#c9a24a", thumb: "/assets/archive/cpa-fahrdienst.jpg" },
+  { id: "bilitro3d", name: "Bilitro 3D", category: "3D Stüdyo & CGI", year: "2026", stack: ["3D / CGI", "Animasyon"], liveUrl: "https://bilitro3d.com", accentColor: "#e8c06a", thumb: "/assets/archive/bilitro3d.jpg" },
+  { id: "goatmedia", name: "Goat Media", category: "Dijital Ajans — Dubai", year: "2025", stack: ["Web Tasarım", "Motion"], liveUrl: "https://goatmediadxb.com", accentColor: "#8f9bd6", thumb: "/assets/archive/goatmedia.jpg" },
   { id: "deko", name: "Deko Dekorasyon", category: "İç Mekan Tasarımı", year: "2025", stack: ["Web Tasarım", "SEO"], liveUrl: "https://dekodekorasyon.com", accentColor: "#d8a94f", thumb: "/assets/archive/deko.jpg" },
   { id: "gia-wallpaper", name: "Gia Design Wallpaper", category: "Duvar Kağıdı & Tasarım", year: "2025", stack: ["E-Ticaret", "UI/UX"], liveUrl: "https://giadesignwallpaper.com", accentColor: "#cf8fa6", thumb: "/assets/archive/gia-wallpaper.jpg" },
   { id: "dr-bugce", name: "Op. Dr. Buğçe Ballıoğlu Güney", category: "Sağlık — Hekim", year: "2025", stack: ["Web Tasarım", "SEO"], liveUrl: "https://drbugceballiogluguney.com", accentColor: "#d98a9e", thumb: "/assets/archive/dr-bugce.jpg" },

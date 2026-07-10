@@ -34,11 +34,11 @@ const TRANSITIONS = N - 1;
    Editorial, not neon: a restrained tint over the black-gold base. */
 const SCENE_ACCENT: Record<string, string> = {
   miyavhav: "#e8823c", // warm orange
-  bilitro3d: "#3fa9d6", // cyan / blue
-  "dr-cem-akman": "#d98a9e", // soft rose (medical-aesthetic)
   derunstudio: "#6fb3a4", // sage teal (interior / wellbeing)
+  "dr-cem-akman": "#d98a9e", // soft rose (medical-aesthetic)
+  "bilitro-com": "#d8a94f", // Bilitro gold
   ngequipments: "#c98f3a", // industrial amber
-  goatmedia: "#8f9bd6", // agency violet-blue
+  "cpa-fahrdienst": "#e0a63a", // transfer amber / gold
 };
 const sceneAccentOf = (i: number) =>
   SCENE_ACCENT[FEATURED_PROJECTS[i]?.id] ??
@@ -108,7 +108,7 @@ function quadMatrix3d(
 /** bumped with every motion-fix round — printed to the console and shown
  *  in the ?swdebug HUD so there is never any doubt WHICH code is running
  *  in the browser being tested */
-const BUILD_TAG = "r44-phoneheaderfit-10.07";
+const BUILD_TAG = "r45-reorder-10.07";
 const pad = (n: number) => String(n + 1).padStart(2, "0");
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
