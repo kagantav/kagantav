@@ -3,6 +3,7 @@
 import { useLayoutEffect, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useLang } from "./i18n";
 import styles from "./ContactSection.module.css";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -13,6 +14,7 @@ const EMAIL = "kagantav1@gmail.com";
 const LINKEDIN_URL = "https://www.linkedin.com/in/ka%C4%9Fan-tav-52b072221";
 
 export default function ContactSection() {
+  const { t } = useLang();
   const rootRef = useRef<HTMLElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -91,18 +93,15 @@ export default function ContactSection() {
         <div className={styles.grain} aria-hidden="true" />
 
         <div ref={contentRef} className={styles.inner}>
-          <p className={styles.thanks}>İzlediğin için teşekkürler</p>
+          <p className={styles.thanks}>{t.contact.thanks}</p>
 
-          <h2 className={styles.headline}>Birlikte çalışalım.</h2>
+          <h2 className={styles.headline}>{t.contact.headline}</h2>
 
-          <p className={styles.lede}>
-            Açık bir pozisyon, yeni bir ekip ya da sadece bir merhaba. Her türlü
-            ulaş, en kısa sürede dönerim.
-          </p>
+          <p className={styles.lede}>{t.contact.lede}</p>
 
           <div className={styles.actions}>
             <a href={`mailto:${EMAIL}`} className={styles.primary}>
-              E-posta Gönder
+              {t.contact.primary}
               <svg viewBox="0 0 14 14" aria-hidden="true">
                 <path
                   d="M2 12L12 2M12 2H4.5M12 2v7.5"
@@ -134,15 +133,15 @@ export default function ContactSection() {
 
           <p className={styles.status}>
             <i className={styles.dot} aria-hidden="true" />
-            Yeni fırsatlara açık · Ankara, Türkiye
+            {t.contact.status}
           </p>
         </div>
 
         <footer className={styles.foot}>
           <span>© 2026 Kağan Tav</span>
-          <span className={styles.footRole}>Full Stack Web &amp; Mobil Developer</span>
+          <span className={styles.footRole}>{t.contact.role}</span>
           <a href="#home" className={styles.top}>
-            Başa dön
+            {t.contact.top}
             <svg viewBox="0 0 14 14" aria-hidden="true">
               <path
                 d="M7 12V2M7 2L2.5 6.5M7 2l4.5 4.5"

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Archivo, Hanken_Grotesk } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import SmoothScroll from "@/components/SmoothScroll";
+import { LangProvider } from "@/components/i18n";
 import "./globals.css";
 
 const display = Archivo({
@@ -70,7 +71,11 @@ export default function RootLayout({
   return (
     <html lang="tr">
       <body className={`${display.variable} ${body.variable}`}>
-        <SmoothScroll>{children}</SmoothScroll>
+        {/* `lang` above is the SSR default; LangProvider keeps it in sync
+            with the visitor's choice after hydration */}
+        <LangProvider>
+          <SmoothScroll>{children}</SmoothScroll>
+        </LangProvider>
         {/* Vercel Analytics — ziyaret sayısı, ülke, referrer, cihaz.
             (Kişi kimliği DEĞİL; bkz. gizlilik notu.) */}
         <Analytics />

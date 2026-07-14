@@ -12,9 +12,12 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import {
   FEATURED_PROJECTS,
+  pick,
+  pickList,
   type FeaturedProject,
   type ProjectMedia,
 } from "./projects";
+import { useLang } from "./i18n";
 import styles from "./SelectedWork.module.css";
 import MacBook3D, { syncVideoPhase } from "./MacBook3D";
 import { invalidate } from "@react-three/fiber";
@@ -129,11 +132,13 @@ function ScreenMedia({
   settled: boolean;
   interactive: boolean;
 }) {
+  const { lang, t } = useLang();
+
   if (media.type === "iframe" && media.src) {
     return settled ? (
       <iframe
         src={media.src}
-        title={`${project.name} canlı önizleme`}
+        title={`${project.name} ${t.work.livePreview}`}
         className={`${styles.mediaFill} ${interactive ? styles.iframeLive : ""}`}
         loading="lazy"
         sandbox="allow-scripts allow-same-origin"
@@ -180,7 +185,7 @@ function ScreenMedia({
           {pad(FEATURED_PROJECTS.indexOf(project))}
         </span>
         <span className={styles.phName}>{project.name}</span>
-        <span className={styles.phCat}>{project.category}</span>
+        <span className={styles.phCat}>{pick(project.category, lang)}</span>
       </div>
       <div className={styles.phRule} />
     </div>
@@ -257,6 +262,7 @@ function DevicePair({
    ════════════════════════════════════════════════ */
 
 export default function SelectedWork() {
+  const { lang, t } = useLang();
   const sectionRef = useRef<HTMLElement>(null);
 
   const pairARef = useRef<HTMLDivElement>(null);
@@ -980,10 +986,10 @@ export default function SelectedWork() {
         <span className={styles.bridgeLine} data-sw-bridgeline />
         <p className={styles.bridgeEyebrow}>
           <span />
-          Seçili Projeler
+          {t.work.eyebrow}
           <span />
         </p>
-        <h2 className={styles.bridgeTitle}>Yayına giren, ölçeklenen ve iş getiren projeler.</h2>
+        <h2 className={styles.bridgeTitle}>{t.work.title}</h2>
       </div>
 
       {/* ── pinned carousel stage ── */}
@@ -1022,13 +1028,9 @@ export default function SelectedWork() {
                 </svg>
               </span>
               <span className={styles.macMenuApp}>Safari</span>
-              <span>Dosya</span>
-              <span>Düzen</span>
-              <span>Görünüm</span>
-              <span>Geçmiş</span>
-              <span>Yer İmleri</span>
-              <span>Pencere</span>
-              <span>Yardım</span>
+              {t.work.menu.map((m) => (
+                <span key={m}>{m}</span>
+              ))}
               <i className={styles.macNotch} />
               <span className={styles.macMenuRight}>
                 <svg className={styles.macWifi} viewBox="0 0 24 24">
@@ -1137,14 +1139,14 @@ export default function SelectedWork() {
             {p.name}
           </h3>
           <p className={styles.category} data-sw-textbit>
-            {p.category} — {p.year}
+            {pick(p.category, lang)} — {p.year}
           </p>
           <p className={styles.desc} data-sw-textbit>
-            {p.description}
+            {pick(p.description, lang)}
           </p>
 
           <ul className={styles.stack} data-sw-textbit>
-            {p.stack.map((s) => (
+            {pickList(p.stack, lang).map((s) => (
               <li key={s}>{s}</li>
             ))}
           </ul>
@@ -1152,7 +1154,7 @@ export default function SelectedWork() {
           <div className={styles.actions} data-sw-textbit>
             {p.liveUrl ? (
               <a href={p.liveUrl} target="_blank" rel="noreferrer" className={styles.btnLive}>
-                Siteyi İncele
+                {t.work.visit}
                 <svg viewBox="0 0 14 14" aria-hidden="true">
                   <path
                     d="M2 12L12 2M12 2H4.5M12 2v7.5"
@@ -1166,12 +1168,12 @@ export default function SelectedWork() {
               </a>
             ) : (
               <span className={`${styles.btnLive} ${styles.btnDisabled}`}>
-                Çok Yakında
+                {t.work.soon}
               </span>
             )}
             {p.caseUrl && (
               <a href={p.caseUrl} className={styles.btnGhost}>
-                Detaylar
+                {t.work.details}
               </a>
             )}
           </div>

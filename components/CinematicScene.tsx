@@ -1,51 +1,41 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { Fragment, useEffect, useLayoutEffect, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import HeroRig3D from "./HeroRig3D";
 import { rigScroll } from "./rigScrollBus";
+import { useLang } from "./i18n";
 import styles from "./CinematicScene.module.css";
 
 gsap.registerPlugin(ScrollTrigger);
 
-const ABOUT_META = [
-  { label: "Konum", value: "Ankara, Türkiye" },
-  { label: "Deneyim", value: "2+ yıl · 50+ teslim edilmiş proje" },
-  { label: "Ana stack", value: "HTML · CSS · React · Next.js · PHP · C#/.NET · SQL · Supabase · React Native" },
-  { label: "Yaklaşım", value: "AI destekli geliştirme · uçtan uca teslim" },
-  { label: "Durum", value: "Yeni fırsatlara açık", gold: true },
-];
-
 /* Shared About copy — rendered once inside the pinned stage (desktop) and
    once in the mobile flow tail; `item` is the reveal-target data attribute */
 function AboutBody({ item }: { item: string }) {
+  const { t } = useLang();
   const ip = { [item]: "" };
   return (
     <>
       <p className={styles.eyebrow} {...ip}>
         <span />
-        Hakkımda
+        {t.about.eyebrow}
       </p>
 
       <h2 className={styles.aboutTitle} {...ip}>
-        Kurumsal web çözümlerini uçtan uca geliştiriyorum.
+        {t.about.title}
       </h2>
 
       <p className={styles.aboutLede} {...ip}>
-        Ben Kağan. Web tarafında React, Next.js, PHP ve C#/.NET, mobil tarafta
-        React Native ile çalışan bir Full Stack Web &amp; Mobil Developer’ım.
-        Kurumsal web siteleri, yönetim panelleri ve mobil uygulamalar
-        geliştiriyorum; analizden veritabanı kurgusuna, yayına almadan bakıma
-        kadar süreci uçtan uca yürütürüm. Yapay zeka araçlarını geliştirme
-        akışıma etkin biçimde entegre ederek daha hızlı ve daha sağlam iş
-        çıkarıyorum. Teslim odaklı, problem çözmeyi seven ve yeni teknolojilere
-        hızla adapte olan bir yazılım geliştiricisiyim.
+        {t.about.lede}
       </p>
 
       <ul className={styles.aboutMeta}>
-        {ABOUT_META.map((row) => (
-          <li key={row.label} {...ip}>
+        {/* index key on purpose: the rows are a fixed, ordered list, and a
+            content-derived key would remount every <li> on a language switch,
+            throwing away the inline reveal state GSAP has set on them */}
+        {t.about.meta.map((row, i) => (
+          <li key={i} {...ip}>
             <span className={styles.metaLabel}>{row.label}</span>
             <span className={row.gold ? styles.metaValueGold : styles.metaValue}>
               {row.gold && <i className={styles.metaDot} />}
@@ -67,6 +57,7 @@ function AboutBody({ item }: { item: string }) {
  * choreographs the DOM copy + overlay layers with a scrubbed GSAP timeline.
  */
 export default function CinematicScene() {
+  const { t } = useLang();
   const sceneRef = useRef<HTMLElement>(null);
 
   useLayoutEffect(() => {
@@ -286,7 +277,7 @@ export default function CinematicScene() {
         <div className={styles.heroContent} data-hero-copy>
           <p className={styles.badge} data-hero-item>
             <span className={styles.badgeDot} />
-            Yeni fırsatlara açığım
+            {t.hero.badge}
           </p>
 
           <h1 className={styles.name} data-hero-item>
@@ -294,22 +285,25 @@ export default function CinematicScene() {
           </h1>
 
           <p className={styles.role} data-hero-item>
-            Full Stack Web &amp; Mobil Developer
+            {t.hero.role}
           </p>
 
           <p className={styles.meta} data-hero-item>
-            Web <i>•</i> Mobil <i>•</i> Dijital Ürünler
+            {t.hero.meta.map((m, i) => (
+              <Fragment key={m}>
+                {i > 0 && <i>•</i>}
+                {m}
+              </Fragment>
+            ))}
           </p>
 
           <p className={styles.lede} data-hero-item>
-            Modern web teknolojileriyle kurumsal siteler, yönetim panelleri ve
-            iş uygulamaları geliştiriyorum. Temiz kod, akıcı arayüzler ve uçtan
-            uca teslim önceliğim.
+            {t.hero.lede}
           </p>
 
           <div className={styles.ctaRow} data-hero-item>
             <a href="#work" className={styles.ctaPrimary}>
-              Projelerimi Gör
+              {t.hero.ctaWork}
               <svg viewBox="0 0 14 14" aria-hidden="true">
                 <path
                   d="M2 12L12 2M12 2H4.5M12 2v7.5"
@@ -328,7 +322,7 @@ export default function CinematicScene() {
               rel="noreferrer"
               className={styles.ctaGhost}
             >
-              CV İndir
+              {t.hero.ctaCv}
               <svg viewBox="0 0 14 14" aria-hidden="true">
                 <path
                   d="M7 1.5v8m0 0L3.8 6.3M7 9.5l3.2-3.2M2 12.5h10"

@@ -3,7 +3,8 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useLoader, useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import { ARCHIVE_PROJECTS, type ArchiveProject } from "./projects";
+import { ARCHIVE_PROJECTS, pick, pickList, type ArchiveProject } from "./projects";
+import { useLang } from "./i18n";
 import { scrollBridge } from "./scrollBridge";
 import styles from "./ReferencesArchive.module.css";
 
@@ -317,6 +318,7 @@ function Rig({
  * fog. Scales to ~20 entries: just append to ARCHIVE_PROJECTS.
  */
 export default function ReferencesArchive() {
+  const { lang, t } = useLang();
   const sectionRef = useRef<HTMLElement>(null);
   const headRef = useRef<HTMLDivElement>(null);
   const progress = useRef(0);
@@ -511,14 +513,11 @@ export default function ReferencesArchive() {
         <div ref={headRef} className={styles.head}>
           <p className={styles.eyebrow}>
             <span />
-            Tüm Arşiv
+            {t.archive.eyebrow}
             <em className={styles.count}>{pad(ARCHIVE_PROJECTS.length)}</em>
           </p>
-          <h2 className={styles.title}>Teslim ettiğim tüm siteler.</h2>
-          <p className={styles.sub}>
-            Öne çıkan birkaç işi yukarıda vitrine aldık. Geri kalan işlerin
-            arasından süzülerek uçun; her panel canlı bir site.
-          </p>
+          <h2 className={styles.title}>{t.archive.title}</h2>
+          <p className={styles.sub}>{t.archive.sub}</p>
         </div>
 
         {mounted && (
@@ -575,7 +574,7 @@ export default function ReferencesArchive() {
           <button
             className={styles.focusClose}
             onClick={() => setActive(null)}
-            aria-label="Kapat"
+            aria-label={t.archive.close}
           >
             <svg viewBox="0 0 24 24" width="20" height="20">
               <path
@@ -594,7 +593,7 @@ export default function ReferencesArchive() {
             </span>
             <p className={styles.inspectEyebrow}>
               <span />
-              {active.category}
+              {pick(active.category, lang)}
             </p>
             <h3 className={styles.inspectName}>{active.name}</h3>
             <div className={styles.inspectMeta}>
@@ -602,12 +601,12 @@ export default function ReferencesArchive() {
               {active.liveUrl && (
                 <span className={styles.inspectLive}>
                   <i />
-                  canlı site
+                  {t.archive.live}
                 </span>
               )}
             </div>
             <div className={styles.inspectStack}>
-              {active.stack.map((s) => (
+              {pickList(active.stack, lang).map((s) => (
                 <span key={s}>{s}</span>
               ))}
             </div>
@@ -618,7 +617,7 @@ export default function ReferencesArchive() {
                 target="_blank"
                 rel="noreferrer"
               >
-                Websiteyi İncele
+                {t.archive.visit}
                 <svg viewBox="0 0 24 24" width="16" height="16">
                   <path
                     d="M7 17L17 7M9 7h8v8"

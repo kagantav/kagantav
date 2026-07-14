@@ -385,7 +385,9 @@ function makePlaceholderTexture(project: FeaturedProject, idx: number) {
   g.fillText(project.name, W / 2, H * 0.62);
   g.fillStyle = "rgba(169,158,138,0.85)";
   g.font = "500 26px Archivo, Arial, sans-serif";
-  g.fillText(project.category.toUpperCase().split("").join("  "), W / 2, H * 0.685);
+  /* fallback screen for a project with no captured media; every current
+     project ships one, so this only guards future entries */
+  g.fillText(project.category.tr.toUpperCase().split("").join("  "), W / 2, H * 0.685);
 
   const rule = g.createLinearGradient(W * 0.2, 0, W * 0.8, 0);
   rule.addColorStop(0, "rgba(0,0,0,0)");
