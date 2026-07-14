@@ -1,0 +1,71 @@
+.wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 200; /* above everything, including the language switch */
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+  transition: opacity 0.7s ease, visibility 0.7s ease;
+}
+
+.gone {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  padding: 0 var(--gutter);
+}
+
+.name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(22px, 3.4vw, 34px);
+  letter-spacing: 0.42em;
+  text-indent: 0.42em; /* balance the trailing letter-space */
+  background: var(--gold-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.track {
+  position: relative;
+  width: min(240px, 56vw);
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(216, 169, 79, 0.16);
+  overflow: hidden;
+}
+
+.fill {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  transform: scaleX(0);
+  border-radius: 2px;
+  background: var(--gold-grad);
+  box-shadow: 0 0 12px rgba(216, 169, 79, 0.6);
+  transition: transform 0.35s ease-out;
+}
+
+.pct {
+  font-family: var(--font-body);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wrap,
+  .fill {
+    transition: none;
+  }
+}

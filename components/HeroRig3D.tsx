@@ -3,7 +3,8 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useTexture } from "@react-three/drei";
+import { PerformanceMonitor, useTexture } from "@react-three/drei";
+import { useContextRecovery } from "./useCanvasLifecycle";
 import { rigScroll } from "./rigScrollBus";
 
 /* ════════════════════════════════════════════════════════════════
@@ -721,6 +722,8 @@ export default function HeroRig3D() {
      monitors that competed with the Selected Work scene for the GPU and
      caused visible micro-stutter there. Freeze the loop off-screen. */
   const [loop, setLoop] = useState<"always" | "never">("always");
+  const [dpr, setDpr] = useState(1.75);
+  const { key: glKey, onCreated } = useContextRecovery();
   useEffect(() => {
     const scene = document.getElementById("home");
     if (!scene) return;
@@ -734,9 +737,11 @@ export default function HeroRig3D() {
 
   return (
     <Canvas
+      key={glKey}
       flat
       frameloop={loop}
-      dpr={[1, 1.75]}
+      dpr={dpr}
+      onCreated={onCreated}
       gl={{
         antialias: true,
         alpha: true,
@@ -745,6 +750,9 @@ export default function HeroRig3D() {
       camera={{ fov: 36, near: 0.1, far: 100, position: [0.25, 0.05, 7.4] }}
       style={{ pointerEvents: "none" }}
     >
+      {/* full quality by default; only steps down if the device can't hold
+          a smooth frame rate — a soft frame beats a stuttering one */}
+      <PerformanceMonitor onDecline={() => setDpr(1)} onIncline={() => setDpr(1.75)} />
       <Suspense fallback={null}>
         <RigScene compact={compact} wide={wide} reduced={reduced} />
       </Suspense>

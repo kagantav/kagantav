@@ -2,9 +2,11 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useLoader, useThree } from "@react-three/fiber";
+import { PerformanceMonitor } from "@react-three/drei";
 import * as THREE from "three";
 import { ARCHIVE_PROJECTS, pick, pickList, type ArchiveProject } from "./projects";
 import { useLang } from "./i18n";
+import { useContextRecovery, useNearViewport } from "./useCanvasLifecycle";
 import { scrollBridge } from "./scrollBridge";
 import styles from "./ReferencesArchive.module.css";
 
@@ -327,8 +329,12 @@ export default function ReferencesArchive() {
   const videoDur = useRef(0); // known only after loadedmetadata
   const videoTime = useRef(0); // eased playhead we seek toward
   const blackoutRef = useRef<HTMLDivElement>(null); // fades the scene to black at the end
-  const [mounted, setMounted] = useState(false);
   const [inView, setInView] = useState(false);
+  /* only hold a WebGL context while the gallery is near the viewport, and
+     drop the dpr a notch if the device can't keep the fly-through smooth */
+  const near = useNearViewport(sectionRef);
+  const { key: glKey, onCreated } = useContextRecovery();
+  const [dpr, setDpr] = useState(1.6);
   /* the inspected project (null = none). `active` drives the DOM; the ref
      mirror lets the R3F frame loop read it without re-rendering the cards. */
   const [active, setActive] = useState<ArchiveProject | null>(null);
@@ -478,10 +484,7 @@ export default function ReferencesArchive() {
     const el = sectionRef.current;
     if (!el) return;
     const io = new IntersectionObserver(
-      ([e]) => {
-        if (e.isIntersecting) setMounted(true);
-        setInView(e.isIntersecting);
-      },
+      ([e]) => setInView(e.isIntersecting),
       // mount ~90% of a viewport BEFORE the section arrives so the one-time
       // texture upload + WebGL context spike lands while the previous section
       // is still on screen, not at the moment of entry
@@ -517,17 +520,22 @@ export default function ReferencesArchive() {
             <em className={styles.count}>{pad(ARCHIVE_PROJECTS.length)}</em>
           </p>
           <h2 className={styles.title}>{t.archive.title}</h2>
-          <p className={styles.sub}>{t.archive.sub}</p>
         </div>
 
-        {mounted && (
+        {near && (
           <Canvas
+            key={glKey}
             className={styles.canvas}
             frameloop={inView ? "always" : "never"}
-            dpr={[1, 1.6]}
-            gl={{ antialias: true, alpha: true }}
+            dpr={dpr}
+            onCreated={onCreated}
+            gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
             camera={{ position: [0, 0, START_Z], fov: 52, near: 0.1, far: 130 }}
           >
+            <PerformanceMonitor
+              onDecline={() => setDpr(1)}
+              onIncline={() => setDpr(1.6)}
+            />
             {/* transparent clear so the scroll-scrubbed video shows through;
                 fog still fades distant cards into the dark cosmic backdrop */}
             <fog attach="fog" args={["#050403", 16, 66]} />

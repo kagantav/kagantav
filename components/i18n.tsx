@@ -55,7 +55,6 @@ export interface Copy {
   archive: {
     eyebrow: string;
     title: string;
-    sub: string;
     live: string;
     visit: string;
     close: string;
@@ -118,7 +117,6 @@ export const COPY: Record<Lang, Copy> = {
     archive: {
       eyebrow: "Tüm Arşiv",
       title: "Teslim ettiğim tüm siteler.",
-      sub: "Öne çıkan birkaç işi yukarıda vitrine aldık. Geri kalan işlerin arasından süzülerek uçun; her panel canlı bir site.",
       live: "canlı site",
       visit: "Websiteyi İncele",
       close: "Kapat",
@@ -183,7 +181,6 @@ export const COPY: Record<Lang, Copy> = {
     archive: {
       eyebrow: "Full Archive",
       title: "Every site I’ve shipped.",
-      sub: "A few highlights are showcased above. Fly through the rest; every panel is a live site.",
       live: "live site",
       visit: "Visit Website",
       close: "Close",

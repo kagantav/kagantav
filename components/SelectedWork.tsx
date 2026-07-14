@@ -18,6 +18,7 @@ import {
   type ProjectMedia,
 } from "./projects";
 import { useLang } from "./i18n";
+import { useNearViewport } from "./useCanvasLifecycle";
 import styles from "./SelectedWork.module.css";
 import MacBook3D, { syncVideoPhase } from "./MacBook3D";
 import { invalidate } from "@react-three/fiber";
@@ -264,6 +265,7 @@ function DevicePair({
 export default function SelectedWork() {
   const { lang, t } = useLang();
   const sectionRef = useRef<HTMLElement>(null);
+  const nearStage = useNearViewport(sectionRef);
 
   const pairARef = useRef<HTMLDivElement>(null);
   const phoneARef = useRef<HTMLDivElement>(null);
@@ -1013,7 +1015,7 @@ export default function SelectedWork() {
         />
 
         {/* real 3D MacBooks — full-stage canvas so they can enter/exit */}
-        <MacBook3D aIdx={aIdx} bIdx={bIdx} settledIdx={settled} />
+        {nearStage && <MacBook3D aIdx={aIdx} bIdx={bIdx} settledIdx={settled} />}
 
         {/* DOM screen overlay — the settled MacBook's display as a real
             <video> inside a macOS + Safari chrome, perspective-mapped

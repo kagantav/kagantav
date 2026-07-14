@@ -6,6 +6,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import HeroRig3D from "./HeroRig3D";
 import { rigScroll } from "./rigScrollBus";
 import { useLang } from "./i18n";
+import { useNearViewport } from "./useCanvasLifecycle";
 import styles from "./CinematicScene.module.css";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -59,6 +60,9 @@ function AboutBody({ item }: { item: string }) {
 export default function CinematicScene() {
   const { t } = useLang();
   const sceneRef = useRef<HTMLElement>(null);
+  /* release the rig's WebGL context once the hero is well behind us, so the
+     showcase and archive scenes below have room on mobile */
+  const nearRig = useNearViewport(sceneRef);
 
   useLayoutEffect(() => {
     const scene = sceneRef.current;
@@ -270,7 +274,7 @@ export default function CinematicScene() {
 
         {/* ── The 3D rig — transparent canvas above video, below copy ── */}
         <div className={styles.canvasWrap} data-rig>
-          <HeroRig3D />
+          {nearRig && <HeroRig3D />}
         </div>
 
         {/* ── Hero copy ── */}

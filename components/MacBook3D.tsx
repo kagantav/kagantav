@@ -5,11 +5,13 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
   type MutableRefObject,
 } from "react";
 import * as THREE from "three";
 import { Canvas, createPortal, useFrame, useThree } from "@react-three/fiber";
 import {
+  PerformanceMonitor,
   useGLTF,
   ContactShadows,
   Environment,
@@ -18,6 +20,7 @@ import {
 import { SkeletonUtils } from "three-stdlib";
 import gsap from "gsap";
 import { swScroll } from "./swScrollBus";
+import { useContextRecovery } from "./useCanvasLifecycle";
 import { FEATURED_PROJECTS, type FeaturedProject } from "./projects";
 import styles from "./SelectedWork.module.css";
 
@@ -1647,18 +1650,24 @@ export default function MacBook3D({
   void aIdx;
   void bIdx;
 
+  const [dpr, setDpr] = useState(1.5);
+  const { key: glKey, onCreated } = useContextRecovery();
+
   return (
     <Canvas
+      key={glKey}
       className={styles.macCanvas}
       /* demand-driven: SelectedWork's ticker invalidates at a capped,
          even rate — on 144/240Hz monitors an uncapped loop overwhelms
          the GPU (shadow pass + PBR at native refresh) and the resulting
          submit stalls read as scroll micro-stutter */
       frameloop="demand"
-      dpr={[1, 1.5]}
+      dpr={dpr}
+      onCreated={onCreated}
       gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
       camera={{ fov: 34, near: 0.1, far: 60, position: [0.25, 0.05, 7.4] }}
     >
+      <PerformanceMonitor onDecline={() => setDpr(1)} onIncline={() => setDpr(1.5)} />
       <Suspense fallback={null}>
         <ambientLight intensity={0.5} color="#fff0da" />
         <directionalLight position={[5, 7, 5]} intensity={1.2} color="#ffe6b8" />

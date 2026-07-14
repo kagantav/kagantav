@@ -142,14 +142,6 @@
   color: transparent;
 }
 
-.sub {
-  margin-top: 14px;
-  font-size: 15px;
-  line-height: 1.7;
-  color: var(--ink-dim);
-  max-width: 46ch;
-}
-
 /* ── scroll hint ───────────────────────────────── */
 .hint {
   position: absolute;
