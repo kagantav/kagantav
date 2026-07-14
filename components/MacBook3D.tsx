@@ -1639,9 +1639,9 @@ export default function MacBook3D({
 }) {
   const reg = useRef<Record<string, UnitHandle>>({});
   const phone = useRef<PhoneHandle | null>(null);
-  /* r22: units are fixed to their projects on the ring — the old A/B
-     slot-recycling props are kept in the signature so SelectedWork
-     stays untouched, but they no longer drive anything */
+  /* Units are pinned to their projects on the ring; the A/B slot props are
+     kept in the signature for call-site compatibility but no longer drive
+     anything. */
   void aIdx;
   void bIdx;
 

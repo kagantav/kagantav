@@ -233,9 +233,9 @@
   min-width: 0;
 }
 
-/* r32: no perspective / preserve-3d / base tilt — a 3D-transformed subtree
-   rasterises its DOM screen content at reduced resolution (soft phone).
-   Flat keeps the phone crisp at native dpr. */
+/* Deliberately flat: no perspective / preserve-3d / tilt. A 3D-transformed
+   subtree rasterises its DOM screen content at reduced resolution, which
+   visibly softens the phone. Flat keeps it crisp at native dpr. */
 .devices {
   position: relative;
   width: min(100%, 900px);
@@ -291,10 +291,9 @@
   width: 22%;
   aspect-ratio: 658 / 1333;
   z-index: 3;
-  /* EXPERIMENT r32: was translateZ(60px) rotateY(-3deg) + will-change +
-     drop-shadow → the 3D compositor layer rasterised the screen content
-     at reduced resolution (soft). Flatten to a plain 2D element so it
-     rasterises at native dpr (crisp). */
+  /* Plain 2D on purpose: promoting this to a 3D compositor layer
+     (translateZ/rotateY + will-change) rasterises the screen content at
+     reduced resolution. Flat keeps it crisp at native dpr. */
 }
 
 /* glass opening, edge-to-edge to the iphone.png bezel (was inset 7.75%/3%,
@@ -645,7 +644,7 @@
   pointer-events: none;
 }
 
-/* …until the user explicitly opts in via the Interact control */
+/* only the live-mode frame accepts pointer input */
 .iframeLive {
   pointer-events: auto;
 }

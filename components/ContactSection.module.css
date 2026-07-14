@@ -22,7 +22,7 @@
   will-change: opacity;
 }
 
-/* warm pool of light that blooms up as we dive in (GSAP drives opacity/scale) */
+/* warm pool of light behind the closer; GSAP drives its opacity/scale */
 .glow {
   position: absolute;
   left: 50%;

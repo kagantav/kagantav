@@ -105,10 +105,8 @@ function quadMatrix3d(
   return `matrix3d(${m.join(",")})`;
 }
 
-/** bumped with every motion-fix round — printed to the console and shown
- *  in the ?swdebug HUD so there is never any doubt WHICH code is running
- *  in the browser being tested */
-const BUILD_TAG = "r54-archive-spacerevert-10.07";
+/** shown in the ?swdebug HUD to identify the running build */
+const BUILD_TAG = "selected-work";
 const pad = (n: number) => String(n + 1).padStart(2, "0");
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
@@ -451,7 +449,6 @@ export default function SelectedWork() {
     fz: boolean;
   } | null>(null);
   useEffect(() => {
-    console.info(`[KT] Selected Work build ${BUILD_TAG}`);
     if (!window.location.search.includes("swdebug")) return;
     /* rolling fps counter — frame drops are the prime suspect for any
        perceived stutter, so the HUD must show them */
@@ -763,10 +760,9 @@ export default function SelectedWork() {
           });
         });
 
-        /* r32: the device group used to hold a -5deg/1.6deg 3D tilt, but a
-           3D-transformed (preserve-3d) subtree rasterises its DOM screen
-           content at reduced resolution → the soft phone. Keep it flat so
-           the phone renders crisp at native dpr. */
+        /* The device group must stay flat: a 3D-transformed (preserve-3d)
+           subtree rasterises its DOM screen content at reduced resolution,
+           which softens the phone. Flat renders crisp at native dpr. */
         if (devices) gsap.set(devices, { rotationY: 0, rotationX: 0 });
       };
 

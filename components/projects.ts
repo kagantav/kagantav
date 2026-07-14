@@ -1,20 +1,12 @@
 /**
- * Project content system for the Selected Work showcase + References Archive.
+ * Project content for the Selected Work showcase and the References Archive.
  *
- * Replace the placeholder entries with real projects as they're ready:
- *  - desktopMedia / mobileMedia: point `src` at a real preview —
- *      type "image"  → a screenshot (public/ path or remote URL)
- *      type "video"  → a short muted mp4/webm loop
- *      type "iframe" → the live site URL (only the ACTIVE project mounts it)
- *    Leave `src: null` to keep the styled placeholder screen.
+ * Screen media per project:
+ *   image  → screenshot under public/assets
+ *   video  → short muted loop
+ *   iframe → live site URL (only the active project ever mounts one)
+ * A null `src` falls back to the styled placeholder screen.
  */
-
-/**
- * TEMP — development-only placeholder so the CANLI İNCELE interaction can
- * be tested end-to-end before real client URLs exist. Replace every usage
- * with the project's real URL (or null) before launch.
- */
-const DEV_PLACEHOLDER_LIVE_URL = "https://example.com";
 
 export type PreviewType = "image" | "video" | "iframe";
 
@@ -56,7 +48,6 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
     category: "E-Ticaret — Pet Shop",
     description:
       "Kedi ve köpek sahipleri için premium pet ürünleri mağazası. Sezonluk koleksiyonlar, avantajlı paketler ve animasyonlu, akıcı bir alışveriş deneyimi sunuyor.",
-    // Shopify doğrulandı (cdn/shop varlıkları); kalanını Kağan teyit edecek
     stack: ["Shopify", "E-Ticaret", "UI/UX", "SEO"],
     desktopMedia: { type: "video", src: "/assets/projects/miyavhav/desktop.mp4" },
     // ?v=2 → cache-bust the 2x re-capture (same filename would serve stale)
@@ -74,7 +65,6 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
     category: "İç Mimari — Tasarım Stüdyosu",
     description:
       "İç mimari ve wellbeing odaklı bir tasarım stüdyosunun tanıtım sitesi. Mekânı iyileştiren, doğaya ve insana dokunan bütüncül bir marka deneyimi.",
-    // TODO(kağan): stack teyit
     stack: ["Web Tasarım", "UI/UX", "SEO"],
     desktopMedia: { type: "image", src: "/assets/projects/derunstudio/desktop.jpg" },
     mobileMedia: { type: "image", src: "/assets/projects/derunstudio/mobile.jpg" },
@@ -89,7 +79,6 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
     category: "Medikal Estetik — Hekim",
     description:
       "Uzm. Dr. Cem Akman'ın medikal estetik kliniği için kurumsal tanıtım sitesi. Uygulama vitrini, online randevu akışı ve güven veren, ferah bir hasta deneyimi.",
-    // TODO(kağan): gerçek stack'i teyit et
     stack: ["Web Tasarım", "SEO", "Randevu Sistemi"],
     desktopMedia: { type: "image", src: "/assets/projects/dr-cem-akman/desktop.jpg" },
     mobileMedia: { type: "image", src: "/assets/projects/dr-cem-akman/mobile.jpg" },
@@ -103,7 +92,6 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
     id: "bilitro-com",
     name: "Bilitro",
     category: "Yazılım & Medya",
-    // TODO(kağan): metinleri güncelleyeceğiz
     description:
       "Marka, dijital medya ve yazılım çözümleri sunan Bilitro'nun kurumsal tanıtım sitesi. Sade ve güçlü bir dijital vitrin.",
     stack: ["Web Tasarım", "UI/UX", "İçerik"],
@@ -135,7 +123,6 @@ export const FEATURED_PROJECTS: FeaturedProject[] = [
     id: "cpa-fahrdienst",
     name: "Cappadocia Fahrdienst",
     category: "Lüks Transfer — İsviçre",
-    // TODO(kağan): metinleri güncelleyeceğiz
     description:
       "Havaalanı transferi ve VIP ulaşım hizmeti veren İsviçre merkezli Cappadocia Fahrdienst için kurumsal tanıtım ve online rezervasyon sitesi.",
     stack: ["Web Tasarım", "SEO", "Rezervasyon"],
@@ -164,8 +151,8 @@ export interface ArchiveProject {
   video?: string;
 }
 
-/* Kağan'ın çalıştığı işlerin tam arşivi. Stack'ler kaba tahmin — TODO teyit.
-   thumb = /assets/archive/<id>.jpg (erişilemeyen 2 site null → placeholder). */
+/* Full reference archive. `thumb` points at /assets/archive/<id>.jpg;
+   a null thumb renders the initials placeholder instead. */
 export const ARCHIVE_PROJECTS: ArchiveProject[] = [
   { id: "akman-ciftlik", name: "Akman Orman Çiftliği", category: "Doğa & Yaşam", year: "2025", stack: ["Web Tasarım", "SEO"], liveUrl: "https://akmanormanciftligi.com", accentColor: "#7fae5a", thumb: "/assets/archive/akman-ciftlik.jpg", video: "/assets/archive/akman-ciftlik.mp4?v=5" },
   { id: "bilitro3d", name: "Bilitro 3D", category: "3D Stüdyo & CGI", year: "2026", stack: ["3D / CGI", "Animasyon"], liveUrl: "https://bilitro3d.com", accentColor: "#e8c06a", thumb: "/assets/archive/bilitro3d.jpg", video: "/assets/archive/bilitro3d.mp4?v=2" },

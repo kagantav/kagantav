@@ -481,8 +481,8 @@ export default function ReferencesArchive() {
         setInView(e.isIntersecting);
       },
       // mount ~90% of a viewport BEFORE the section arrives so the one-time
-      // texture upload + WebGL context spike happens while the user is still
-      // in the previous section — not at the moment of entry
+      // texture upload + WebGL context spike lands while the previous section
+      // is still on screen, not at the moment of entry
       { rootMargin: "40% 0px 90% 0px" }
     );
     io.observe(el);
