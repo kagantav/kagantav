@@ -1,0 +1,243 @@
+/* just a scroll-length spacer — the visible closer is the FIXED .stage, so
+   nothing here slides; scrolling this range only drives the dive + a short hold */
+.contact {
+  position: relative;
+  z-index: 10;
+  height: 112svh;
+  background: var(--bg);
+}
+
+/* the fixed stage: fills the viewport in place (never slides in), revealed by
+   GSAP only while the closer is on screen, sitting over the archive's dark tail */
+.stage {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg);
+  visibility: hidden;
+  opacity: 0;
+  will-change: opacity;
+}
+
+/* warm pool of light that blooms up as we dive in (GSAP drives opacity/scale) */
+.glow {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  translate: -50% -50%;
+  width: min(1180px, 130vw);
+  height: min(760px, 85vh);
+  background: radial-gradient(
+    50% 50% at 50% 50%,
+    rgba(216, 169, 79, 0.16) 0%,
+    rgba(216, 169, 79, 0.05) 44%,
+    transparent 72%
+  );
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.inner {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: clamp(60px, 12vh, 130px) var(--gutter) 40px;
+  will-change: transform, opacity, filter;
+}
+
+.thanks {
+  font-size: clamp(11px, 1.4vw, 13px);
+  font-weight: 500;
+  letter-spacing: 0.36em;
+  text-transform: uppercase;
+  color: var(--gold);
+  opacity: 0.9;
+}
+
+.headline {
+  margin-top: 22px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(34px, 6.6vw, 78px);
+  line-height: 1.04;
+  letter-spacing: -0.012em;
+  background: linear-gradient(174deg, #fbf3df 0%, #ecd299 58%, #caa456 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 3px 26px rgba(0, 0, 0, 0.6));
+}
+
+.lede {
+  margin-top: 22px;
+  max-width: 46ch;
+  font-size: clamp(14px, 1.8vw, 17px);
+  line-height: 1.66;
+  color: var(--ink-dim);
+}
+
+.actions {
+  margin-top: clamp(34px, 5vh, 48px);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: center;
+}
+
+.primary,
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 30px;
+  border-radius: 999px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.25s ease,
+    background 0.25s ease, color 0.25s ease;
+}
+
+.primary {
+  color: #1a1206;
+  background: var(--gold-grad);
+  box-shadow: 0 16px 42px -14px rgba(216, 169, 79, 0.62);
+}
+.primary svg {
+  width: 13px;
+  height: 13px;
+}
+.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 24px 56px -14px rgba(216, 169, 79, 0.85);
+}
+
+.secondary {
+  color: var(--gold-bright);
+  border: 1px solid rgba(216, 169, 79, 0.42);
+  background: rgba(216, 169, 79, 0.05);
+}
+.secondary svg {
+  width: 17px;
+  height: 17px;
+}
+.secondary:hover {
+  transform: translateY(-2px);
+  border-color: rgba(243, 215, 145, 0.85);
+  background: rgba(216, 169, 79, 0.11);
+  color: #fbeecb;
+}
+
+.email {
+  margin-top: 26px;
+  font-size: clamp(13px, 1.6vw, 15px);
+  letter-spacing: 0.06em;
+  color: var(--ink-dim);
+  border-bottom: 1px solid transparent;
+  padding-bottom: 2px;
+  transition: color 0.25s ease, border-color 0.25s ease;
+}
+.email:hover {
+  color: var(--gold-bright);
+  border-color: rgba(216, 169, 79, 0.5);
+}
+
+.status {
+  margin-top: clamp(24px, 3.4vh, 34px);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gold-bright);
+  box-shadow: 0 0 10px rgba(243, 215, 145, 0.9);
+  animation: contactPulse 2.2s ease-in-out infinite;
+}
+@keyframes contactPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(243, 215, 145, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 7px rgba(243, 215, 145, 0);
+  }
+}
+
+/* ── footer bar (below the pinned dive) ── */
+.foot {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 26px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px var(--gutter) 30px;
+  border-top: 1px solid var(--line-soft);
+  background: var(--bg);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
+}
+.footRole {
+  color: var(--ink-faint);
+}
+.top {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-dim);
+  transition: color 0.25s ease;
+}
+.top svg {
+  width: 13px;
+  height: 13px;
+}
+.top:hover {
+  color: var(--gold);
+}
+
+@media (max-width: 640px) {
+  .foot {
+    justify-content: center;
+    text-align: center;
+  }
+  .footRole {
+    order: 3;
+    flex-basis: 100%;
+  }
+  .primary,
+  .secondary {
+    padding: 15px 26px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dot {
+    animation: none;
+  }
+}

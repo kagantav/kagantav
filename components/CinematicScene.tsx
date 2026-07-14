@@ -10,10 +10,11 @@ import styles from "./CinematicScene.module.css";
 gsap.registerPlugin(ScrollTrigger);
 
 const ABOUT_META = [
-  { label: "Location", value: "İstanbul, Türkiye" },
-  { label: "Experience", value: "5+ years shipping web & mobile" },
-  { label: "Core stack", value: "React · Next.js · Node · PostgreSQL" },
-  { label: "Status", value: "Open to select projects", gold: true },
+  { label: "Konum", value: "Ankara, Türkiye" },
+  { label: "Deneyim", value: "2+ yıl · 50+ teslim edilmiş proje" },
+  { label: "Ana stack", value: "HTML · CSS · React · Next.js · PHP · C#/.NET · SQL · Supabase · React Native" },
+  { label: "Yaklaşım", value: "AI destekli geliştirme · uçtan uca teslim" },
+  { label: "Durum", value: "Yeni fırsatlara açık", gold: true },
 ];
 
 /* Shared About copy — rendered once inside the pinned stage (desktop) and
@@ -24,18 +25,22 @@ function AboutBody({ item }: { item: string }) {
     <>
       <p className={styles.eyebrow} {...ip}>
         <span />
-        About Me
+        Hakkımda
       </p>
 
       <h2 className={styles.aboutTitle} {...ip}>
-        Building premium digital products, end to end.
+        Kurumsal web çözümlerini uçtan uca geliştiriyorum.
       </h2>
 
       <p className={styles.aboutLede} {...ip}>
-        I’m Kağan — a full-stack developer focused on refined,
-        high-performance software. From system architecture to the final
-        pixel, I obsess over the details that make a product feel effortless,
-        fast and quietly expensive.
+        Ben Kağan. Web tarafında React, Next.js, PHP ve C#/.NET, mobil tarafta
+        React Native ile çalışan bir Full Stack Web &amp; Mobil Developer’ım.
+        Kurumsal web siteleri, yönetim panelleri ve mobil uygulamalar
+        geliştiriyorum; analizden veritabanı kurgusuna, yayına almadan bakıma
+        kadar süreci uçtan uca yürütürüm. Yapay zeka araçlarını geliştirme
+        akışıma etkin biçimde entegre ederek daha hızlı ve daha sağlam iş
+        çıkarıyorum. Teslim odaklı, problem çözmeyi seven ve yeni teknolojilere
+        hızla adapte olan bir yazılım geliştiricisiyim.
       </p>
 
       <ul className={styles.aboutMeta}>
@@ -254,7 +259,7 @@ export default function CinematicScene() {
             preload="auto"
             poster="/assets/background-photo.png"
           >
-            <source src="/assets/background-video2.mp4" type="video/mp4" />
+            <source src="/assets/background-video2-clean.mp4?v=2" type="video/mp4" />
           </video>
 
           {/* L1 — subtle overall dim */}
@@ -281,7 +286,7 @@ export default function CinematicScene() {
         <div className={styles.heroContent} data-hero-copy>
           <p className={styles.badge} data-hero-item>
             <span className={styles.badgeDot} />
-            Available for new projects
+            Yeni fırsatlara açığım
           </p>
 
           <h1 className={styles.name} data-hero-item>
@@ -289,21 +294,22 @@ export default function CinematicScene() {
           </h1>
 
           <p className={styles.role} data-hero-item>
-            Full-Stack Developer
+            Full Stack Web &amp; Mobil Developer
           </p>
 
           <p className={styles.meta} data-hero-item>
-            Web <i>•</i> Mobile <i>•</i> Digital Products
+            Web <i>•</i> Mobil <i>•</i> Dijital Ürünler
           </p>
 
           <p className={styles.lede} data-hero-item>
-            I design and build scalable digital experiences with clean code,
-            intuitive interfaces and modern technologies.
+            Modern web teknolojileriyle kurumsal siteler, yönetim panelleri ve
+            iş uygulamaları geliştiriyorum. Temiz kod, akıcı arayüzler ve uçtan
+            uca teslim önceliğim.
           </p>
 
           <div className={styles.ctaRow} data-hero-item>
             <a href="#work" className={styles.ctaPrimary}>
-              View Work
+              Projelerimi Gör
               <svg viewBox="0 0 14 14" aria-hidden="true">
                 <path
                   d="M2 12L12 2M12 2H4.5M12 2v7.5"
@@ -315,8 +321,14 @@ export default function CinematicScene() {
                 />
               </svg>
             </a>
-            <a href="#" className={styles.ctaGhost}>
-              Download CV
+            <a
+              href="/KAGANTAV-CV.pdf"
+              download
+              target="_blank"
+              rel="noreferrer"
+              className={styles.ctaGhost}
+            >
+              CV İndir
               <svg viewBox="0 0 14 14" aria-hidden="true">
                 <path
                   d="M7 1.5v8m0 0L3.8 6.3M7 9.5l3.2-3.2M2 12.5h10"
@@ -336,13 +348,6 @@ export default function CinematicScene() {
           <AboutBody item="data-about-item" />
         </div>
 
-        {/* ── Scroll cue ── */}
-        <div className={styles.cue} data-cue aria-hidden="true">
-          <span className={styles.cueLabel}>Scroll</span>
-          <span className={styles.cueTrack}>
-            <span className={styles.cueThumb} />
-          </span>
-        </div>
       </div>
 
       {/* ── Mobile tail: the About copy flows in right after the pinned

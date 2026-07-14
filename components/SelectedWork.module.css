@@ -1329,6 +1329,11 @@
 
   .panel {
     padding-bottom: 4svh;
+    /* nudge the info card down into the empty space below so it clears the
+       companion iPhone (which hangs below the laptop) instead of covering it.
+       transform (not margin) so the device grid stays put + aligned with the
+       full-stage 3D MacBook canvas. */
+    transform: translateY(clamp(34px, 10vw, 62px));
   }
 
   .counterRow {

@@ -135,7 +135,7 @@ function ScreenMedia({
     return settled ? (
       <iframe
         src={media.src}
-        title={`${project.name} live preview`}
+        title={`${project.name} canlı önizleme`}
         className={`${styles.mediaFill} ${interactive ? styles.iframeLive : ""}`}
         loading="lazy"
         sandbox="allow-scripts allow-same-origin"
@@ -984,10 +984,10 @@ export default function SelectedWork() {
         <span className={styles.bridgeLine} data-sw-bridgeline />
         <p className={styles.bridgeEyebrow}>
           <span />
-          Selected Work
+          Seçili Projeler
           <span />
         </p>
-        <h2 className={styles.bridgeTitle}>Projects that ship, scale and sell.</h2>
+        <h2 className={styles.bridgeTitle}>Yayına giren, ölçeklenen ve iş getiren projeler.</h2>
       </div>
 
       {/* ── pinned carousel stage ── */}
@@ -1026,13 +1026,13 @@ export default function SelectedWork() {
                 </svg>
               </span>
               <span className={styles.macMenuApp}>Safari</span>
-              <span>File</span>
-              <span>Edit</span>
-              <span>View</span>
-              <span>History</span>
-              <span>Bookmarks</span>
-              <span>Window</span>
-              <span>Help</span>
+              <span>Dosya</span>
+              <span>Düzen</span>
+              <span>Görünüm</span>
+              <span>Geçmiş</span>
+              <span>Yer İmleri</span>
+              <span>Pencere</span>
+              <span>Yardım</span>
               <i className={styles.macNotch} />
               <span className={styles.macMenuRight}>
                 <svg className={styles.macWifi} viewBox="0 0 24 24">
@@ -1156,7 +1156,7 @@ export default function SelectedWork() {
           <div className={styles.actions} data-sw-textbit>
             {p.liveUrl ? (
               <a href={p.liveUrl} target="_blank" rel="noreferrer" className={styles.btnLive}>
-                View Live
+                Siteyi İncele
                 <svg viewBox="0 0 14 14" aria-hidden="true">
                   <path
                     d="M2 12L12 2M12 2H4.5M12 2v7.5"
@@ -1170,23 +1170,12 @@ export default function SelectedWork() {
               </a>
             ) : (
               <span className={`${styles.btnLive} ${styles.btnDisabled}`}>
-                Coming Soon
+                Çok Yakında
               </span>
-            )}
-            {liveSrcOf(p) && (
-              <button
-                ref={liveBtnRef}
-                className={styles.btnLive}
-                disabled={settled !== textIdx || live !== "off"}
-                onClick={() => enterLive(textIdx)}
-              >
-                Canlı İncele
-                <i className={styles.liveDot} aria-hidden="true" />
-              </button>
             )}
             {p.caseUrl && (
               <a href={p.caseUrl} className={styles.btnGhost}>
-                View Case
+                Detaylar
               </a>
             )}
           </div>

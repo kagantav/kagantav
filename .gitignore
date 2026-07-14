@@ -9,14 +9,19 @@
 .DS_Store
 *.tsbuildinfo
 npm-debug.log*
-
-# local screen recordings
-Recording *.mp4
+.vercel
 
 # playwright mcp logs
 .playwright-mcp/
-*video*.mp4
-*-demo.mp4
 
-iphone-view.mp4
-*-view.mp4
+# Local scratch recordings / demo clips.
+# NOTE: every pattern here is ROOT-ANCHORED with a leading "/" on purpose.
+# Un-anchored globs like "*video*.mp4" also matched public/assets/
+# background-video2-clean.mp4 (the hero backdrop), which silently excluded
+# real site media from the repo — and therefore from the deploy.
+/Recording *.mp4
+/last video*.mp4
+/phone view*.mp4
+/arsiv-section-*.mp4
+/*-demo.mp4
+/*-view.mp4

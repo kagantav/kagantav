@@ -585,6 +585,20 @@
     width: auto;
     padding-top: 0;
     z-index: 4;
+    /* centred column on phones (reads cleaner in portrait) */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .lede {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .ctaRow {
+    justify-content: center;
   }
 
   .badge {
@@ -594,11 +608,11 @@
   }
 
   .name {
-    margin-top: 14px;
+    margin-top: 10px;
   }
 
   .role {
-    margin-top: 10px;
+    margin-top: 8px;
     font-size: 14px;
     letter-spacing: 0.3em;
   }
@@ -610,14 +624,14 @@
   }
 
   .lede {
-    margin-top: 12px;
-    font-size: 13.5px;
-    line-height: 1.6;
-    max-width: 42ch;
+    margin-top: 10px;
+    font-size: 13px;
+    line-height: 1.55;
+    max-width: 40ch;
   }
 
   .ctaRow {
-    margin-top: 16px;
+    margin-top: 12px;
     gap: 16px;
   }
 
@@ -630,9 +644,12 @@
     font-size: 11.5px;
   }
 
+  /* drop the rig well below the (now taller, centred) copy/CTA stack so the
+     person + floating cards never read under the ghost CTA */
   .canvasWrap {
     position: absolute;
     inset: 0;
+    transform: translateY(16%);
   }
 
   /* readability veils re-aimed for a vertical layout */
@@ -743,7 +760,7 @@
 @media (max-width: 560px) {
   .ctaRow {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     gap: 22px;
   }
 

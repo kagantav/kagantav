@@ -15,10 +15,76 @@
   background: #050403;
 }
 
+/* ── scroll-scrubbed background video (behind the transparent canvas) ── */
+.videoBg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.videoBgEl {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0; /* fades up once metadata is seated */
+  transition: opacity 1s ease;
+}
+.videoBgEl[data-ready="1"] {
+  opacity: 1;
+}
+/* veil: header legibility + a cinematic edge vignette that also covers the
+   bottom-right corner where the source watermark was removed (delogo residue) */
+.videoBgVeil {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    /* extra cover over the removed-watermark corner (bottom-right) */
+    radial-gradient(
+      44% 48% at 100% 100%,
+      rgba(0, 0, 0, 0.82) 0%,
+      rgba(0, 0, 0, 0.4) 40%,
+      transparent 66%
+    ),
+    /* header legibility top + gentle floor bottom */
+    linear-gradient(
+      180deg,
+      rgba(5, 4, 3, 0.55) 0%,
+      rgba(5, 4, 3, 0.12) 26%,
+      transparent 50%,
+      rgba(5, 4, 3, 0.32) 100%
+    ),
+    /* symmetric cinematic edge vignette */
+    radial-gradient(
+      116% 126% at 50% 46%,
+      transparent 42%,
+      rgba(0, 0, 0, 0.34) 74%,
+      rgba(0, 0, 0, 0.64) 100%
+    );
+}
+
 .canvas {
   position: absolute !important;
   inset: 0;
   z-index: 1;
+  background: transparent;
+}
+
+/* fades to pure black over the last stretch of the fly-through (JS sets
+   opacity from scroll) → a clean cinematic cut into the contact closer */
+.blackout {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  /* the screen slowly turns to the CONTACT section's exact colour (not pure
+     black) as the fly-through ends — flat, so the fixed closer that takes over
+     on top is the same plane and its arrival is imperceptible (no seam/slide) */
+  background: var(--bg);
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* ── header overlay (fades as you fly in; JS sets opacity) ── */
@@ -134,5 +200,485 @@
 @media (max-width: 680px) {
   .head {
     max-width: 84vw;
+  }
+}
+
+/* ════════════════════════════════════════════════
+   Project inspect view (opens on card click) — cinematic, part of the space
+   ════════════════════════════════════════════════ */
+.inspect {
+  --accent: #d8a94f;
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(20px, 5vw, 72px);
+  background:
+    radial-gradient(80% 60% at 50% 50%, transparent 0%, rgba(4, 3, 2, 0.55) 100%),
+    rgba(5, 4, 3, 0.5);
+  backdrop-filter: blur(14px) saturate(1.05);
+  -webkit-backdrop-filter: blur(14px) saturate(1.05);
+  animation: inspFade 0.3s ease both;
+}
+@keyframes inspFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* HUD corner brackets */
+.hud {
+  position: absolute;
+  z-index: 4;
+  width: clamp(26px, 4vw, 52px);
+  height: clamp(26px, 4vw, 52px);
+  border: 1.5px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  pointer-events: none;
+  opacity: 0;
+  animation: hudIn 0.5s ease 0.16s both;
+}
+@keyframes hudIn {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  to {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+}
+.hudTL {
+  top: clamp(20px, 4vw, 46px);
+  left: clamp(20px, 4vw, 46px);
+  border-right: 0;
+  border-bottom: 0;
+}
+.hudTR {
+  top: clamp(20px, 4vw, 46px);
+  right: clamp(20px, 4vw, 46px);
+  border-left: 0;
+  border-bottom: 0;
+}
+.hudBL {
+  bottom: clamp(20px, 4vw, 46px);
+  left: clamp(20px, 4vw, 46px);
+  border-right: 0;
+  border-top: 0;
+}
+.hudBR {
+  bottom: clamp(20px, 4vw, 46px);
+  right: clamp(20px, 4vw, 46px);
+  border-left: 0;
+  border-top: 0;
+}
+
+.inspectStage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: clamp(24px, 5vw, 68px);
+  width: min(1000px, 100%);
+  perspective: 1500px;
+  animation: inspStage 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes inspStage {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.inspectClose {
+  position: absolute;
+  top: -16px;
+  right: -6px;
+  z-index: 6;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--ink-dim);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.25s;
+}
+.inspectClose:hover {
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  transform: rotate(90deg);
+}
+
+/* left: preview + giant faint catalog index */
+.inspectVisual {
+  position: relative;
+  flex: 0 0 auto;
+  width: clamp(300px, 42vw, 496px);
+}
+.inspectIndex {
+  position: absolute;
+  top: -0.46em;
+  left: -0.3em;
+  z-index: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(120px, 17vw, 224px);
+  line-height: 0.8;
+  color: transparent;
+  -webkit-text-stroke: 1px color-mix(in srgb, var(--accent) 32%, transparent);
+  opacity: 0.5;
+  pointer-events: none;
+}
+.inspectFrame {
+  position: relative;
+  z-index: 1;
+  aspect-ratio: 16 / 10;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #0a0806;
+  transform: rotateY(-9deg) rotateX(2deg);
+  transform-origin: right center;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, rgba(216, 169, 79, 0.25));
+  box-shadow:
+    0 40px 80px -30px rgba(0, 0, 0, 0.9),
+    0 0 70px -25px color-mix(in srgb, var(--accent) 70%, transparent);
+  animation: frameIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.06s both;
+}
+@keyframes frameIn {
+  from {
+    opacity: 0;
+    transform: rotateY(-22deg) translateX(34px);
+  }
+  to {
+    opacity: 1;
+    transform: rotateY(-9deg) rotateX(2deg);
+  }
+}
+.inspectFrame video,
+.inspectFrame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.inspectInitials {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-size: 72px;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--accent) 80%, #fff);
+  opacity: 0.5;
+}
+.inspectFrameSheen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(120deg, rgba(255, 255, 255, 0.12) 0%, transparent 32%);
+}
+
+/* right: editorial info (children fade up, staggered) */
+.inspectInfo {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.inspectInfo > * {
+  animation: infoUp 0.5s ease both;
+}
+.inspectInfo > *:nth-child(1) {
+  animation-delay: 0.18s;
+}
+.inspectInfo > *:nth-child(2) {
+  animation-delay: 0.24s;
+}
+.inspectInfo > *:nth-child(3) {
+  animation-delay: 0.3s;
+}
+.inspectInfo > *:nth-child(4) {
+  animation-delay: 0.36s;
+}
+.inspectInfo > *:nth-child(5) {
+  animation-delay: 0.42s;
+}
+@keyframes infoUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.inspectEyebrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.inspectEyebrow span {
+  width: 34px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--gold), transparent);
+}
+.inspectName {
+  margin: 14px 0 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(34px, 5vw, 58px);
+  line-height: 1.02;
+  background: var(--metal-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.inspectMeta {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: 16px;
+}
+.inspectYear {
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  color: var(--ink-dim);
+}
+.inspectLive {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.inspectLive i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gold);
+  animation: livePulse 1.8s ease-in-out infinite;
+}
+@keyframes livePulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--gold) 60%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 6px transparent;
+  }
+}
+.inspectStack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 22px;
+}
+.inspectStack span {
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  color: var(--ink-dim);
+  border: 1px solid rgba(216, 169, 79, 0.28);
+  border-radius: 999px;
+  padding: 6px 13px;
+  background: rgba(216, 169, 79, 0.05);
+}
+.inspectBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 30px;
+  padding: 13px 26px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  color: #1a1206;
+  background: var(--gold-grad);
+  box-shadow: 0 12px 34px -12px color-mix(in srgb, var(--accent) 72%, transparent);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.inspectBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 46px -12px color-mix(in srgb, var(--accent) 85%, transparent);
+}
+
+@media (max-width: 760px) {
+  .inspectStage {
+    flex-direction: column;
+    gap: 22px;
+  }
+  .inspectVisual {
+    width: min(420px, 100%);
+  }
+  .inspectFrame {
+    transform: none;
+    animation: none;
+  }
+  .inspectInfo {
+    align-items: center;
+    text-align: center;
+  }
+  .inspectClose {
+    top: 6px;
+    right: 6px;
+  }
+}
+
+/* ════════════════════════════════════════════════
+   Inspect focus layer — the card flies forward in 3D; DOM carries info only
+   ════════════════════════════════════════════════ */
+.focus {
+  --accent: #d8a94f;
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+  pointer-events: none;
+  animation: inspFade 0.3s ease both;
+}
+.focusScrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 100% at 30% 50%, transparent 42%, rgba(4, 3, 2, 0.5) 100%),
+    linear-gradient(90deg, transparent 34%, rgba(4, 3, 2, 0.5) 82%);
+  animation: inspFade 0.4s ease both;
+}
+.focusCatcher {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: auto;
+  cursor: default;
+}
+.focusClose {
+  position: absolute;
+  z-index: 7;
+  top: clamp(20px, 4vw, 44px);
+  right: clamp(20px, 4vw, 44px);
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--ink-dim);
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.25s;
+  animation: infoUp 0.4s ease 0.22s both;
+}
+.focusClose:hover {
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  transform: rotate(90deg);
+}
+.focusInfo {
+  position: absolute;
+  z-index: 6;
+  top: 50%;
+  right: clamp(34px, 7vw, 108px);
+  transform: translateY(-50%);
+  width: min(400px, 42vw);
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.focusInfo > * {
+  animation: infoUp 0.5s ease both;
+}
+.focusInfo > *:nth-child(2) {
+  animation-delay: 0.16s;
+}
+.focusInfo > *:nth-child(3) {
+  animation-delay: 0.22s;
+}
+.focusInfo > *:nth-child(4) {
+  animation-delay: 0.28s;
+}
+.focusInfo > *:nth-child(5) {
+  animation-delay: 0.34s;
+}
+.focusInfo > *:nth-child(6) {
+  animation-delay: 0.4s;
+}
+.focusIndex {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(60px, 8vw, 106px);
+  line-height: 0.8;
+  color: transparent;
+  -webkit-text-stroke: 1px color-mix(in srgb, var(--gold) 34%, transparent);
+  opacity: 0.6;
+  margin-bottom: 8px;
+  animation-delay: 0.1s;
+}
+
+@media (max-width: 820px) {
+  /* portrait focus: the 3D card sits in the upper half (R3F pose), the info
+     stacks as a centred bottom sheet */
+  .focusInfo {
+    top: auto;
+    bottom: clamp(22px, 6vw, 52px);
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(460px, 90vw);
+    align-items: center;
+    text-align: center;
+  }
+  .focusIndex {
+    font-size: clamp(46px, 15vw, 72px);
+    margin-bottom: 4px;
+  }
+  /* isolate the focused card with a transparent window in the upper-centre;
+     darken the top (stray gallery cards) and the bottom (behind the info) */
+  .focusScrim {
+    background:
+      radial-gradient(72% 34% at 50% 31%, transparent 34%, rgba(4, 3, 2, 0.58) 84%),
+      linear-gradient(
+        180deg,
+        rgba(4, 3, 2, 0.66) 0%,
+        rgba(4, 3, 2, 0) 15%,
+        rgba(4, 3, 2, 0) 45%,
+        rgba(4, 3, 2, 0.84) 100%
+      );
+  }
+  /* the global header is hidden while inspecting, so the close can stay
+     top-right (conventional); decorative corner brackets are dropped */
+  .focusClose {
+    top: clamp(14px, 4vw, 40px);
+    right: clamp(14px, 4vw, 40px);
+    left: auto;
+  }
+  .hud {
+    display: none;
   }
 }
