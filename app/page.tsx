@@ -4,11 +4,13 @@ import ReferencesArchive from "@/components/ReferencesArchive";
 import ContactSection from "@/components/ContactSection";
 import LangToggle from "@/components/LangToggle";
 import Preloader from "@/components/Preloader";
+import { PerfBadge } from "@/components/perfFlags";
 
 export default function Home() {
   return (
     <main>
       <Preloader />
+      <PerfBadge />
       <LangToggle />
       <CinematicScene />
       <SelectedWork />

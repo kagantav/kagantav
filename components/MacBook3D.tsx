@@ -21,6 +21,7 @@ import { SkeletonUtils } from "three-stdlib";
 import gsap from "gsap";
 import { swScroll } from "./swScrollBus";
 import { useContextRecovery } from "./useCanvasLifecycle";
+import { perfFlags } from "./perfFlags";
 import { FEATURED_PROJECTS, type FeaturedProject } from "./projects";
 import styles from "./SelectedWork.module.css";
 
@@ -1047,6 +1048,11 @@ function MacUnit({
     let { opacity, lidT } = pose;
     const t = state.clock.elapsedTime;
 
+    /* ?perf=1 — keep only the unit nearest the front, so the phone can say
+       whether the two ghost flanks are what it cannot afford */
+    if (perfFlags().soloUnit && Math.cos(d * RING_STEP) < Math.cos(RING_STEP / 2))
+      opacity = 0;
+
     /* idle breath — only while present and calm, and NEVER during live
        mode (the frozen base scene must not drift under the dive) */
     const calm =
@@ -1704,6 +1710,15 @@ export default function MacBook3D({
      fight over the device's dpr */
   const ceiling = useRef(1.5);
   const { key: glKey, onCreated } = useContextRecovery();
+
+  /* ?perf=2 — pin the dpr floor so the phone can say whether raw pixel
+     count is the wall. Set in an effect so the server render is untouched. */
+  useEffect(() => {
+    if (perfFlags().lowDpr) {
+      ceiling.current = 1;
+      setDpr(1);
+    }
+  }, []);
 
   return (
     <Canvas
