@@ -25,3 +25,7 @@ npm-debug.log*
 /arsiv-section-*.mp4
 /*-demo.mp4
 /*-view.mp4
+
+# local perf probes
+/*-probe.mjs
+/*-tmp.mjs
