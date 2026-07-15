@@ -1301,18 +1301,14 @@ function CameraRig({
 }) {
   const { camera, viewport, gl } = useThree();
   const setDpr = useThree((s) => s.setDpr);
-  /* COMPOSITOR DIVE: the camera never moves for CANLI İNCELE anymore.
-     At enter we render ONE extra-crisp frame (dpr boost), compute where
-     the frozen screen sits in canvas pixels, and hand those numbers to
-     the DOM ticker — which zooms the static canvas with a pure CSS
-     transform. CSS transforms are compositor-only, so the dive cannot
-     stutter no matter how heavy the 3D scene is. */
-  const zoomArmed = useRef(false);
-  /* motion-based dynamic resolution for SCROLL transitions (same proven
-     medicine as the dive): while the laptop travels, render at dpr 1.2
-     — motion masks it and every frame fits the vsync budget, which is
-     what "buttery" actually is (even cadence, not raw sharpness). The
-     full 1.5 comes back only after 300ms of stillness. */
+  /* The canvas's CSS size, already tracked by R3F's ResizeObserver.
+     This used to be read as gl.domElement.clientWidth/clientHeight inside
+     the frame loop — and a clientWidth read forces the browser to flush
+     pending style and layout work synchronously. The DOM ticker writes
+     transforms every frame, so every frame did: write styles, invalidate
+     layout, then force a full document reflow. On a phone that alone can
+     saturate the main thread, and the scroll runs on the main thread. */
+  const size = useThree((s) => s.size);
   const drs = useRef({ lo: false, calmSince: 0 });
   const tmp = useRef({
     look: new THREE.Vector3(),
@@ -1366,70 +1362,14 @@ function CameraRig({
        of frames: that WAS the perceived exit teleport. */
     void rawDt; // live clock now advances in SelectedWork's ticker
 
-    /* live-enter (one-time): boost dpr for a single extra-crisp frame,
-       project the frozen screen into canvas pixels, publish the CSS
-       zoom parameters. Both happen while everything is still static. */
-    if (!zoomArmed.current && swScroll.liveTarget === 1) {
-      zoomArmed.current = true;
-      const active = Object.values(reg.current).find(
-        (h) => h.projectIdx === swScroll.liveIdx
-      );
-      if (active?.rig.anchor) {
-        const el = gl.domElement;
-        const w = el.clientWidth || 1;
-        const h = el.clientHeight || 1;
-        const v = tmp.current;
-        active.rig.anchor.getWorldPosition(v.aPos);
-        active.rig.anchor.getWorldQuaternion(v.q);
-        const proj = (p: THREE.Vector3) => {
-          const c = p.clone().project(camera);
-          return { x: (c.x * 0.5 + 0.5) * w, y: (1 - (c.y * 0.5 + 0.5)) * h };
-        };
-        const cpt = proj(v.aPos);
-        const rpt = proj(
-          v.aPos
-            .clone()
-            .add(
-              new THREE.Vector3(1, 0, 0)
-                .applyQuaternion(v.q)
-                .multiplyScalar(active.rig.screenWorld.w / 2)
-            )
-        );
-        const upt = proj(
-          v.aPos
-            .clone()
-            .add(
-              new THREE.Vector3(0, 1, 0)
-                .applyQuaternion(v.q)
-                .multiplyScalar(active.rig.screenWorld.h / 2)
-            )
-        );
-        const halfW = Math.max(1, Math.hypot(rpt.x - cpt.x, rpt.y - cpt.y));
-        const halfH = Math.max(1, Math.hypot(upt.x - cpt.x, upt.y - cpt.y));
-        const fill = Math.max(w / (halfW * 2), h / (halfH * 2)) * 1.12;
-        swScroll.zoom = {
-          ox: cpt.x,
-          oy: cpt.y,
-          tx: w / 2 - cpt.x,
-          ty: h / 2 - cpt.y,
-          s: Math.min(fill, 6),
-        };
-      }
-      setDpr(2);
-    } else if (
-      zoomArmed.current &&
-      swScroll.liveTarget === 0 &&
-      swScroll.live === 0
-    ) {
-      zoomArmed.current = false;
-      setDpr(Math.min(window.devicePixelRatio || 1, ceiling.current));
-    }
-
     const portrait = viewport.aspect < 1.05;
     const { lt } = seg(swScroll.smooth);
 
-    /* scroll-transit DRS — never while live mode owns the dpr */
-    if (swScroll.liveTarget === 0 && swScroll.live === 0 && !zoomArmed.current) {
+    /* motion-based dynamic resolution: while the laptop travels, render a
+       little softer — motion masks it and every frame fits the vsync
+       budget, which is what "buttery" actually is. Full sharpness returns
+       after 300ms of stillness. */
+    {
       const chasing =
         Math.abs(swScroll.smooth - swScroll.progress) > 0.0006;
       const inTransit = lt > 0.16 && lt < 0.84;
@@ -1501,9 +1441,8 @@ function CameraRig({
       const quad = swScroll.quad;
       if (best?.rig.anchor && Math.abs(bestD) < 0.25) {
         const v = tmp.current;
-        const el = gl.domElement;
-        const cw = el.clientWidth || 1;
-        const ch = el.clientHeight || 1;
+        const cw = size.width || 1;
+        const ch = size.height || 1;
         best.rig.anchor.updateWorldMatrix(true, false);
         best.rig.anchor.getWorldPosition(v.aPos);
         best.rig.anchor.getWorldQuaternion(v.q);
@@ -1546,9 +1485,8 @@ function CameraRig({
       const ph = phone.current;
       if (ph?.rig.anchor && ph.group?.visible !== false) {
         const v = tmp.current;
-        const el = gl.domElement;
-        const cw = el.clientWidth || 1;
-        const ch = el.clientHeight || 1;
+        const cw = size.width || 1;
+        const ch = size.height || 1;
         ph.rig.anchor.updateWorldMatrix(true, false);
         ph.rig.anchor.getWorldPosition(v.aPos);
         ph.rig.anchor.getWorldQuaternion(v.q);
