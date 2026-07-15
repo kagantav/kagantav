@@ -302,8 +302,15 @@ function useMacRig(): MacRig {
        hitch/snap at segment boundaries. */
     for (const m of fadeMats) m.transparent = true;
 
+    /* both setters run per unit per frame — six units × ~23 materials each.
+       The dormant units on the back of the ring hold a constant value, so
+       skipping unchanged writes drops most of that churn. The epsilons are
+       far below a perceptible step. */
+    let lastOpacity = -1;
     const setOpacity = (v: number) => {
       const t = clamp01(v);
+      if (Math.abs(t - lastOpacity) < 0.001) return;
+      lastOpacity = t;
       // fully hidden units leave the render list entirely: no depth
       // punch-through, no frustum cost, safe to recycle
       root.visible = t > 0.02;
@@ -316,8 +323,11 @@ function useMacRig(): MacRig {
       }
     };
 
+    let lastShade = -1;
     const setShade = (v: number) => {
       const t = clamp01(v);
+      if (Math.abs(t - lastShade) < 0.002) return;
+      lastShade = t;
       for (const { m, base } of colorMats) m.color!.copy(base).multiplyScalar(t);
     };
 
@@ -895,8 +905,100 @@ interface UnitHandle {
   group: THREE.Group | null;
   rig: MacRig;
   projectIdx: number;
+  /** rim-light drivers, refreshed by the unit itself every frame */
+  presence: number;
+  opacity: number;
 }
 type Registry = MutableRefObject<Record<string, UnitHandle>>;
+
+/* ════════════════════════════════════════════════
+   Rim lights — TWO, shared by the whole ring
+   ════════════════════════════════════════════════ */
+
+/** the rim light's seat in a unit's own space (rear-upper-left edge) */
+const RIM_OFFSET = new THREE.Vector3(-1.6, 2.2, -1.8);
+
+/**
+ * Every unit used to carry its own point light. One unit per project meant
+ * SIX point lights in the scene — and a light's cost is not its brightness,
+ * it is the `NUM_POINT_LIGHTS` compiled into every material's shader. Nine
+ * lights were evaluated per fragment, on clearcoat physical materials, in
+ * the transparent pass (no early-z, so every hidden surface paid too). That
+ * is what made the showcase crawl on a phone.
+ *
+ * THREE lights reproduce the lighting exactly. A unit is drawn only while
+ * cos(ringAngle) > 0.3, i.e. within ±72.5° of the front; units sit 60°
+ * apart, so at most three can be visible at once — settled, that is the
+ * hero plus its two flanking ghosts. The three lights track those three
+ * units and sit exactly where each unit's own light sat, so every unit that
+ * renders keeps its own rim. The three that lose a light are the ones on the
+ * back of the ring, which are not drawn at all; measured against a visible
+ * body their light contributed ~3e-3 versus the hero rim's ~1e2.
+ *
+ * Ranking is by ring angle, NOT by |absPos − index|: the ring wraps, so at
+ * project 0 the unit at index 5 sits at −300° ≡ +60° — a visible flank that
+ * a raw index distance would rank dead last.
+ *
+ * The COUNT is fixed and the lights are never toggled: changing how many
+ * lights are visible recompiles every shader, which is exactly the
+ * mid-scroll hitch this file avoids elsewhere.
+ */
+function RimLights({ reg }: { reg: Registry }) {
+  const lights = [
+    useRef<THREE.PointLight>(null),
+    useRef<THREE.PointLight>(null),
+    useRef<THREE.PointLight>(null),
+  ];
+  const v = useRef(new THREE.Vector3());
+
+  useFrame(() => {
+    const absPos = swScroll.smooth * TRANSITIONS;
+    /* cos of the ring angle — the same term that drives visibility and rim
+       intensity, and it wraps for free */
+    const front = (h: UnitHandle) =>
+      Math.cos((absPos - h.projectIdx) * RING_STEP);
+    const near = Object.values(reg.current)
+      .filter((h) => h.group)
+      .sort((p, q) => front(q) - front(p));
+
+    lights.forEach((ref, i) => {
+      const light = ref.current;
+      if (!light) return;
+      const h = near[i];
+      const g = h?.group;
+      if (!g) {
+        light.intensity = 0;
+        return;
+      }
+      /* the unit group is a direct child of StageRoot, so its own
+         position/rotation/scale carry the offset into stage space —
+         landing the light exactly where it sat as the unit's child */
+      light.position.copy(
+        v.current
+          .copy(RIM_OFFSET)
+          .multiplyScalar(g.scale.x)
+          .applyEuler(g.rotation)
+          .add(g.position)
+      );
+      light.intensity = 3.2 * h.presence * h.opacity + 0.15;
+    });
+  });
+
+  return (
+    <>
+      {lights.map((ref, i) => (
+        <pointLight
+          key={i}
+          ref={ref}
+          color="#e9b45e"
+          intensity={0.15}
+          distance={9}
+          decay={2}
+        />
+      ))}
+    </>
+  );
+}
 
 /* ════════════════════════════════════════════════
    One cinematic MacBook
@@ -915,14 +1017,20 @@ function MacUnit({
 }) {
   const rig = useMacRig();
   const group = useRef<THREE.Group>(null);
-  const rim = useRef<THREE.PointLight>(null);
   const screenMat = useRef<THREE.MeshBasicMaterial>(null);
   const glassMat = useRef<THREE.MeshBasicMaterial>(null);
   const chromeMat = useRef<THREE.MeshBasicMaterial>(null);
   const phase = projectIdx * 1.7;
 
   useEffect(() => {
-    reg.current[unit] = { group: group.current, rig, projectIdx };
+    const prev = reg.current[unit];
+    reg.current[unit] = {
+      group: group.current,
+      rig,
+      projectIdx,
+      presence: prev?.presence ?? 0,
+      opacity: prev?.opacity ?? 0,
+    };
   });
 
   useFrame((state) => {
@@ -981,9 +1089,12 @@ function MacUnit({
       if (chromeMat.current) chromeMat.current.opacity = on * opacity;
     }
 
-    /* warm rim light follows presence */
-    if (rim.current)
-      rim.current.intensity = 3.2 * pose.presence * opacity + 0.15;
+    /* hand the shared rim lights this unit's current standing */
+    const h = reg.current[unit];
+    if (h) {
+      h.presence = pose.presence;
+      h.opacity = opacity;
+    }
   });
 
   const project = FEATURED_PROJECTS[projectIdx];
@@ -991,15 +1102,8 @@ function MacUnit({
   return (
     <group ref={group}>
       <primitive object={rig.root} />
-      {/* gold rim light hugging the rear edge of this unit */}
-      <pointLight
-        ref={rim}
-        position={[-1.6, 2.2, -1.8]}
-        color="#e9b45e"
-        intensity={0.15}
-        distance={9}
-        decay={2}
-      />
+      {/* the gold rim light is no longer per-unit: two shared lights track
+          the nearest units from the stage (see RimLights) */}
       <ScreenPlane
         rig={rig}
         project={project}
@@ -1188,9 +1292,12 @@ function Phone({
 function CameraRig({
   reg,
   phone,
+  ceiling,
 }: {
   reg: Registry;
   phone: MutableRefObject<PhoneHandle | null>;
+  /** the highest dpr this device has earned; PerformanceMonitor lowers it */
+  ceiling: MutableRefObject<number>;
 }) {
   const { camera, viewport, gl } = useThree();
   const setDpr = useThree((s) => s.setDpr);
@@ -1315,7 +1422,7 @@ function CameraRig({
       swScroll.live === 0
     ) {
       zoomArmed.current = false;
-      setDpr(Math.min(window.devicePixelRatio || 1, 1.5));
+      setDpr(Math.min(window.devicePixelRatio || 1, ceiling.current));
     }
 
     const portrait = viewport.aspect < 1.05;
@@ -1331,11 +1438,15 @@ function CameraRig({
         drs.current.calmSince = nowMs;
         if (!drs.current.lo) {
           drs.current.lo = true;
-          setDpr(1.2);
+          setDpr(Math.min(1.2, ceiling.current));
         }
       } else if (drs.current.lo && nowMs - drs.current.calmSince > 300) {
         drs.current.lo = false;
-        setDpr(Math.min(window.devicePixelRatio || 1, 1.5));
+        /* respect the ceiling: this used to hard-code 1.5 and so undid
+           PerformanceMonitor's verdict after every 300ms of calm — a
+           struggling phone was pulled straight back to the dpr it had
+           just been judged unable to sustain */
+        setDpr(Math.min(window.devicePixelRatio || 1, ceiling.current));
       }
     }
 
@@ -1651,6 +1762,9 @@ export default function MacBook3D({
   void bIdx;
 
   const [dpr, setDpr] = useState(1.5);
+  /* shared with CameraRig's dynamic-resolution logic, so the two can never
+     fight over the device's dpr */
+  const ceiling = useRef(1.5);
   const { key: glKey, onCreated } = useContextRecovery();
 
   return (
@@ -1667,7 +1781,16 @@ export default function MacBook3D({
       gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
       camera={{ fov: 34, near: 0.1, far: 60, position: [0.25, 0.05, 7.4] }}
     >
-      <PerformanceMonitor onDecline={() => setDpr(1)} onIncline={() => setDpr(1.5)} />
+      <PerformanceMonitor
+        onDecline={() => {
+          ceiling.current = 1;
+          setDpr(1);
+        }}
+        onIncline={() => {
+          ceiling.current = 1.5;
+          setDpr(1.5);
+        }}
+      />
       <Suspense fallback={null}>
         <ambientLight intensity={0.5} color="#fff0da" />
         <directionalLight position={[5, 7, 5]} intensity={1.2} color="#ffe6b8" />
@@ -1695,6 +1818,9 @@ export default function MacBook3D({
               reg={reg}
             />
           ))}
+          {/* mounted after the units so it reads their freshly-posed
+              transforms in the same frame */}
+          <RimLights reg={reg} />
           {/* frames={1}: the shadow is baked ONCE — re-rendering the
               scene's depth EVERY frame was the single biggest per-frame
               GPU cost. A soft static pool under the stage center is
@@ -1719,7 +1845,7 @@ export default function MacBook3D({
               WebGL phone had unfixable DOM-overlay occlusion/sorting issues */}
         </StageRoot>
 
-        <CameraRig reg={reg} phone={phone} />
+        <CameraRig reg={reg} phone={phone} ceiling={ceiling} />
         <TextureWarmup />
       </Suspense>
     </Canvas>
