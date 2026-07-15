@@ -1762,7 +1762,12 @@ export default function MacBook3D({
               slot geri dönüşümü yok; arkaya dönenler görünmez olur
               (opacity→0 → render listesinden çıkar), sahnede tipik
               olarak ön + iki kanat kalır */}
-          {FEATURED_PROJECTS.map((_, i) => (
+          {/* ?perf=5 mounts one unit, ?perf=6 none — the mount itself is what
+              round 1 never tested: six SkeletonUtils clones, 138 material
+              clones and 22 shader links all happen regardless of opacity */}
+          {FEATURED_PROJECTS.filter(
+            (_, i) => !perfFlags().noneMounted && !(perfFlags().oneMounted && i > 0)
+          ).map((_, i) => (
             <MacUnit
               key={i}
               unit={String(i)}

@@ -17,7 +17,7 @@ import { useCallback, useEffect, useState, type RefObject } from "react";
  */
 export function useNearViewport(
   ref: RefObject<HTMLElement | null>,
-  margin = "120% 0px 120% 0px"
+  margin: string = "120% 0px 120% 0px"
 ) {
   const [near, setNear] = useState(false);
 
@@ -48,15 +48,37 @@ export function useNearViewport(
 export function useContextRecovery() {
   const [key, setKey] = useState(0);
 
-  const onCreated = useCallback(({ gl }: { gl: { domElement: HTMLCanvasElement } }) => {
-    const canvas = gl.domElement;
-    const lost = (e: Event) => {
-      e.preventDefault(); // without this the context is gone for good
-    };
-    const restored = () => setKey((k) => k + 1);
-    canvas.addEventListener("webglcontextlost", lost);
-    canvas.addEventListener("webglcontextrestored", restored);
-  }, []);
+  const onCreated = useCallback(
+    ({
+      gl,
+    }: {
+      gl: {
+        domElement: HTMLCanvasElement;
+        debug: { checkShaderErrors: boolean };
+      };
+    }) => {
+      /* three checks every shader for compile/link errors by default, which
+         means a getProgramInfoLog call per program. That call is a hard sync
+         point: it blocks the CPU until the driver has finished compiling, so
+         the MacBook's 22 programs compile strictly one after another instead
+         of in parallel. It cost 8% of the profile here and far more on a
+         phone driver, where it reads as the section freezing on arrival.
+         three's own docs recommend turning this off in production. Errors
+         still surface in development. */
+      if (process.env.NODE_ENV === "production") {
+        gl.debug.checkShaderErrors = false;
+      }
+
+      const canvas = gl.domElement;
+      const lost = (e: Event) => {
+        e.preventDefault(); // without this the context is gone for good
+      };
+      const restored = () => setKey((k) => k + 1);
+      canvas.addEventListener("webglcontextlost", lost);
+      canvas.addEventListener("webglcontextrestored", restored);
+    },
+    []
+  );
 
   return { key, onCreated };
 }
