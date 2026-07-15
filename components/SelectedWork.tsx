@@ -276,174 +276,15 @@ export default function SelectedWork() {
   const [k, setK] = useState(0);
   /* which project the right panel shows */
   const [textIdx, setTextIdx] = useState(0);
-  /* which project (if any) is settled — gates video playback + live mode */
+  /* which project (if any) is settled — gates video playback */
   const [settled, setSettled] = useState<number>(0);
 
-  /* ── CANLI İNCELE (screen-dive live mode) ── */
-  const [live, setLive] = useState<"off" | "enter" | "on" | "exit">("off");
-  const [frameState, setFrameState] = useState<"loading" | "ok" | "fail">(
-    "loading"
-  );
-  const liveBtnRef = useRef<HTMLButtonElement>(null);
   const screenOvRef = useRef<HTMLDivElement>(null);
   const screenOvVideoRef = useRef<HTMLVideoElement>(null);
-  const savedScrollY = useRef(0);
-  /** scroll progress frozen at live-enter; restored verbatim at exit */
-  const frozenProg = useRef(0);
 
   const kRef = useRef(0);
   const textIdxRef = useRef(0);
   const settledRef = useRef(0);
-
-  const liveSrcOf = (proj?: FeaturedProject) =>
-    proj
-      ? proj.desktopMedia.type === "iframe" && proj.desktopMedia.src
-        ? proj.desktopMedia.src
-        : proj.liveUrl
-      : null;
-
-  /* Scroll lock WITHOUT layout shift: `overflow: hidden` removes the
-     scrollbar, which resizes the canvas and shifts the whole stage —
-     that was the visible "teleport left" after exiting live mode.
-     Instead we swallow every scroll input while leaving layout alone. */
-  const scrollLockRef = useRef<(() => void) | null>(null);
-  const lockScroll = () => {
-    if (scrollLockRef.current) return;
-    const block = (e: Event) => e.preventDefault();
-    const keys = new Set([
-      "ArrowUp",
-      "ArrowDown",
-      "PageUp",
-      "PageDown",
-      "Home",
-      "End",
-      " ",
-    ]);
-    const blockKeys = (e: KeyboardEvent) => {
-      if (keys.has(e.key)) e.preventDefault();
-    };
-    window.addEventListener("wheel", block, { passive: false });
-    window.addEventListener("touchmove", block, { passive: false });
-    window.addEventListener("keydown", blockKeys);
-    scrollLockRef.current = () => {
-      window.removeEventListener("wheel", block);
-      window.removeEventListener("touchmove", block);
-      window.removeEventListener("keydown", blockKeys);
-      scrollLockRef.current = null;
-    };
-  };
-  const unlockScroll = () => scrollLockRef.current?.();
-
-  const enterLive = (idx: number) => {
-    if (live !== "off" || settled !== idx) return;
-    const src = liveSrcOf(FEATURED_PROJECTS[idx]);
-    if (!src) return;
-    /* FREEZE the complete base scene: store the exact scroll state, pin
-       target and damped progress to it, and stop Lenis so no residual
-       inertia can move anything while live mode owns the camera. From
-       here every visible change is a pure function of swScroll.live. */
-    savedScrollY.current = window.scrollY;
-    frozenProg.current = swScroll.smooth;
-    swScroll.progress = frozenProg.current;
-    swScroll.frozen = true;
-    scrollBridge.lenis?.stop();
-    swScroll.liveIdx = idx;
-    swScroll.liveTarget = 1;
-    lockScroll();
-    // frameState is NOT reset here — the overlay iframe pre-loaded while
-    // the project was settled, so a ready frame crossfades in instantly
-    setLive("enter");
-  };
-
-  const exitLive = () => {
-    if (live !== "on" && live !== "enter") return;
-    setLive("exit");
-    // brief head start for the iframe fade — the camera then pulls back
-    // behind it while it is still dissolving (depth, no dead pause)
-    window.setTimeout(() => {
-      swScroll.liveTarget = 0;
-    }, 120);
-  };
-
-  /* enter: hand off to the DOM iframe once the display fills the view;
-     exit: pure reverse of the same clocked progress. Scroll control is
-     handed back ONLY after liveProgress is exactly 0 AND the frozen
-     scroll state has been restored and resynced for two full frames. */
-  const finishingRef = useRef(false);
-  useEffect(() => {
-    if (live === "enter") {
-      const id = window.setInterval(() => {
-        if (swScroll.live > 0.8) setLive("on");
-      }, 60);
-      return () => window.clearInterval(id);
-    }
-    if (live === "exit") {
-      finishingRef.current = false;
-      const id = window.setInterval(() => {
-        if (finishingRef.current || swScroll.live > 0.001) return;
-        finishingRef.current = true;
-        swScroll.live = 0;
-        /* scroll handoff: kill any residual Lenis inertia target, put
-           the browser scroll back exactly where it froze, resync
-           ScrollTrigger (update — NOT refresh, layout never changed),
-           then wait two rAF cycles with the scene still frozen before
-           unlocking. Nothing can move during those frames. */
-        scrollBridge.lenis?.scrollTo(savedScrollY.current, {
-          immediate: true,
-          force: true,
-        });
-        window.scrollTo(0, savedScrollY.current);
-        swScroll.progress = frozenProg.current;
-        swScroll.smooth = frozenProg.current;
-        ScrollTrigger.update();
-        requestAnimationFrame(() =>
-          requestAnimationFrame(() => {
-            swScroll.frozen = false;
-            swScroll.liveIdx = -1;
-            scrollBridge.lenis?.start();
-            unlockScroll();
-            setLive("off");
-            liveBtnRef.current?.focus();
-          })
-        );
-      }, 60);
-      return () => window.clearInterval(id);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [live]);
-
-  /* Escape closes live mode; safety-restore scroll lock on unmount */
-  useEffect(() => {
-    if (live === "off") return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") exitLive();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [live]);
-
-  useEffect(
-    () => () => {
-      scrollLockRef.current?.();
-      swScroll.liveTarget = 0;
-      swScroll.live = 0;
-      swScroll.liveIdx = -1;
-      swScroll.frozen = false;
-      scrollBridge.lenis?.start();
-    },
-    []
-  );
-
-  /* CSP / X-Frame-Options fallback: if the site never loads, say so */
-  useEffect(() => {
-    if (live !== "on" || frameState !== "loading") return;
-    const t = window.setTimeout(
-      () => setFrameState((f) => (f === "loading" ? "fail" : f)),
-      6000
-    );
-    return () => window.clearTimeout(t);
-  }, [live, frameState]);
 
   /* continuity inspector — visit with ?swdebug to enable (works in prod
      too so real-machine recordings carry the numbers with them) */
@@ -501,41 +342,20 @@ export default function SelectedWork() {
   const aIdx = Math.min(k % 2 === 0 ? k : k + 1, N - 1);
   const bIdx = Math.min(k % 2 === 0 ? k + 1 : k, N - 1);
 
-  /* the live-overlay iframe pre-loads for whichever project is settled,
-     so the CANLI İNCELE dive never pays a mount/network hitch. It keeps
-     the LAST settled project through transitions (settled = -1) so the
-     iframe is never unmounted/remounted mid-scroll. */
+  /* The crisp DOM screen overlay holds the LAST settled project through a
+     transition (settled goes to -1 mid-flight), so it is never unmounted
+     and remounted while the laptop is travelling. */
   const [overlayProj, setOverlayProj] = useState(0);
   const overlayProjRef = useRef(0);
   useEffect(() => {
     if (settled >= 0) {
       setOverlayProj(settled);
       overlayProjRef.current = settled;
-      /* new settle = new media epoch: every screen starts its clip
-         from the FIRST frame, all devices share the same phase */
+      /* new settle = new media epoch: every screen starts its clip from the
+         FIRST frame, and all devices share the same phase */
       swScroll.mediaEpoch = performance.now();
     }
   }, [settled]);
-  const overlayIdx = swScroll.liveIdx >= 0 ? swScroll.liveIdx : overlayProj;
-  const overlayEmbeddable =
-    FEATURED_PROJECTS[overlayIdx]?.liveEmbed !== false;
-  const overlaySrc = overlayEmbeddable
-    ? liveSrcOf(FEATURED_PROJECTS[overlayIdx])
-    : null;
-  const overlayHref = liveSrcOf(FEATURED_PROJECTS[overlayIdx]);
-
-  /* a different project (or none) settled → the iframe src changes and
-     must load again before it may crossfade in. Projects that forbid
-     embedding go straight to the "Yeni Sekmede Aç" card. */
-  useEffect(() => {
-    setFrameState(overlayEmbeddable ? "loading" : "fail");
-  }, [overlaySrc, overlayEmbeddable]);
-
-  /* the overlay iframe must be created AFTER hydration: if it were in the
-     server HTML, example.com would finish loading before React attaches
-     onLoad and the ready state would never flip */
-  const [hydrated, setHydrated] = useState(false);
-  useEffect(() => setHydrated(true), []);
 
   /* videos play only on the settled pair */
   useEffect(() => {
@@ -1184,66 +1004,6 @@ export default function SelectedWork() {
             <span className={styles.progressFill} data-sw-prog />
           </div>
         </div>
-      </div>
-
-      {/* ── CANLI İNCELE overlay: the camera dives into the display in 3D;
-          once the screen fills the viewport this fixed layer blends in and
-          hands off to a single live iframe.
-          PERFORMANCE: the overlay stays PERMANENTLY mounted and the iframe
-          pre-loads as soon as its project settles — entering/leaving live
-          mode only flips data-state, so no React commit, iframe creation or
-          network load can ever hitch a frame of the camera dive. */}
-      <div
-        className={styles.liveDive}
-        data-state={live}
-        role="dialog"
-        aria-hidden={live === "off"}
-        aria-label={`${FEATURED_PROJECTS[overlayIdx]?.name ?? ""} canlı inceleme`}
-      >
-        <div className={styles.liveVeil} aria-hidden="true" />
-
-        <div className={styles.liveFrame}>
-          {frameState === "loading" && (
-            <div className={styles.liveLoading}>
-              <i />
-              <span>Canlı önizleme yükleniyor…</span>
-            </div>
-          )}
-          {frameState === "fail" ? (
-            <div className={styles.liveFallback}>
-              <p>
-                Bu site gömülü önizlemeye izin vermiyor
-                <br />
-                (X-Frame-Options / CSP).
-              </p>
-              <a href={overlayHref ?? "#"} target="_blank" rel="noreferrer">
-                Yeni Sekmede Aç
-                <svg viewBox="0 0 14 14" aria-hidden="true">
-                  <path
-                    d="M2 12L12 2M12 2H4.5M12 2v7.5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </a>
-            </div>
-          ) : overlaySrc && hydrated ? (
-            <iframe
-              src={overlaySrc}
-              title="Canlı önizleme"
-              onLoad={() => setFrameState("ok")}
-              data-ready={frameState === "ok"}
-              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-            />
-          ) : null}
-        </div>
-
-        <button className={styles.liveExit} onClick={exitLive} tabIndex={live === "off" ? -1 : 0}>
-          Canlı İncelemeden Çık ✕
-        </button>
       </div>
 
       {/* dev-only continuity inspector (?swdebug) */}
