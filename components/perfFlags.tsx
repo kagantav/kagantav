@@ -35,6 +35,10 @@ export interface PerfFlags {
   oneMounted: boolean;
   noneMounted: boolean;
   dropHero: boolean;
+  /** force mobile "lite" materials on (8) / off (9) regardless of viewport,
+   *  so the two material tiers can be A/B'd in one viewport */
+  liteOn: boolean;
+  liteOff: boolean;
   raw: string;
 }
 
@@ -46,6 +50,8 @@ const OFF: PerfFlags = {
   oneMounted: false,
   noneMounted: false,
   dropHero: false,
+  liteOn: false,
+  liteOff: false,
   raw: "",
 };
 
@@ -68,6 +74,8 @@ export function perfFlags(): PerfFlags {
     oneMounted: has("5"),
     noneMounted: has("6"),
     dropHero: has("7"),
+    liteOn: has("8"),
+    liteOff: has("9"),
     raw,
   };
   return cached;
@@ -81,6 +89,8 @@ const LABEL: Record<string, string> = {
   "5": "TEK laptop mount",
   "6": "HİÇ laptop yok",
   "7": "hero canvas atılır",
+  "8": "lite materyal ZORLA",
+  "9": "lite KAPALI zorla",
 };
 
 /** Live frame rate, so the report back is a number and not an impression. */

@@ -158,7 +158,17 @@ interface MacRig {
   setShade: (v: number) => void;
 }
 
-function useMacRig(): MacRig {
+/**
+ * `lite` builds the whole device out of MeshStandardMaterial instead of
+ * MeshPhysicalMaterial. Physical adds a clearcoat lobe — a second specular
+ * layer with its own normals and Fresnel evaluated per fragment — and that
+ * is the phone-killer here: the model is only ~58k verts, so the cost is all
+ * in the fragment shader, and clearcoat roughly doubles it. Standard keeps
+ * the same albedo, metalness, normal maps and environment reflection, so the
+ * laptop reads the same; it just loses the wet-looking top-coat sheen.
+ * Desktop stays physical.
+ */
+function useMacRig(lite: boolean): MacRig {
   const { scene } = useGLTF(MODEL_URL);
 
   return useMemo(() => {
@@ -182,16 +192,24 @@ function useMacRig(): MacRig {
     let screenWorld = { w: 3.4, h: 2.2 };
     const fadeMats: THREE.Material[] = [];
 
-    const blackPanel = new THREE.MeshPhysicalMaterial({
-      color: "#020202",
-      roughness: 0.16,
-      metalness: 0.1,
-      clearcoat: 1,
-      clearcoatRoughness: 0.12,
-      polygonOffset: true,
-      polygonOffsetFactor: -2,
-    });
-    const clearGlass = new THREE.MeshPhysicalMaterial({
+    const blackPanel = lite
+      ? new THREE.MeshStandardMaterial({
+          color: "#020202",
+          roughness: 0.16,
+          metalness: 0.1,
+          polygonOffset: true,
+          polygonOffsetFactor: -2,
+        })
+      : new THREE.MeshPhysicalMaterial({
+          color: "#020202",
+          roughness: 0.16,
+          metalness: 0.1,
+          clearcoat: 1,
+          clearcoatRoughness: 0.12,
+          polygonOffset: true,
+          polygonOffsetFactor: -2,
+        });
+    const clearGlass = new THREE.MeshStandardMaterial({
       color: "#0a0a0a",
       transparent: true,
       opacity: 0.06,
@@ -240,7 +258,7 @@ function useMacRig(): MacRig {
         }
         // every other material: clone per unit so cross-fading two
         // MacBooks never bleeds between instances
-        const cloned = mat.clone();
+        let cloned = mat.clone();
         /* the GLB ships materials with real transmission — three runs an
            extra full-scene transmission pass for them EVERY frame, and
            that pass corrupts clear-color state under nested renders
@@ -250,6 +268,19 @@ function useMacRig(): MacRig {
         const ph = cloned as THREE.MeshPhysicalMaterial;
         if (ph.transmission !== undefined && ph.transmission > 0) {
           ph.transmission = 0;
+        }
+        /* lite: demote any physical material (e.g. the transmissive keycaps)
+           to a plain standard one. copy() carries the common PBR channels —
+           colour, metalness, roughness, every map, envMapIntensity — and
+           simply drops the physical-only lobes. */
+        if (
+          lite &&
+          (cloned as unknown as { isMeshPhysicalMaterial?: boolean })
+            .isMeshPhysicalMaterial
+        ) {
+          const std = new THREE.MeshStandardMaterial();
+          std.copy(cloned as THREE.MeshStandardMaterial);
+          cloned = std;
         }
         if (Array.isArray(mesh.material)) mesh.material[mi] = cloned;
         else mesh.material = cloned;
@@ -333,7 +364,7 @@ function useMacRig(): MacRig {
     };
 
     return { root, lid, anchor, screenWorld, fadeMats, setOpacity, setShade };
-  }, [scene]);
+  }, [scene, lite]);
 }
 
 /* ════════════════════════════════════════════════
@@ -1010,13 +1041,15 @@ function MacUnit({
   projectIdx,
   settledIdx,
   reg,
+  lite,
 }: {
   unit: string;
   projectIdx: number;
   settledIdx: number;
   reg: Registry;
+  lite: boolean;
 }) {
-  const rig = useMacRig();
+  const rig = useMacRig(lite);
   const group = useRef<THREE.Group>(null);
   const screenMat = useRef<THREE.MeshBasicMaterial>(null);
   const glassMat = useRef<THREE.MeshBasicMaterial>(null);
@@ -1754,20 +1787,31 @@ export default function MacBook3D({
   void aIdx;
   void bIdx;
 
+  /* Mobile "lite" mode: standard (not physical) materials, a dpr ceiling of
+     1, and no live contact-shadow pass. Decided once at mount — a phone does
+     not become a desktop mid-session, and rebuilding the rigs on a rotation
+     is not worth it. */
+  const [lite, setLite] = useState(false);
+  useEffect(() => {
+    const f = perfFlags();
+    if (f.liteOn) return setLite(true);
+    if (f.liteOff) return setLite(false);
+    setLite(window.matchMedia("(max-width: 1023px)").matches);
+  }, []);
+
   const [dpr, setDpr] = useState(1.5);
   /* shared with CameraRig's dynamic-resolution logic, so the two can never
      fight over the device's dpr */
   const ceiling = useRef(1.5);
   const { key: glKey, onCreated } = useContextRecovery();
 
-  /* ?perf=2 — pin the dpr floor so the phone can say whether raw pixel
-     count is the wall. Set in an effect so the server render is untouched. */
+  /* lite (phones) and ?perf=2 both pin the dpr floor to 1 */
   useEffect(() => {
-    if (perfFlags().lowDpr) {
+    if (lite || perfFlags().lowDpr) {
       ceiling.current = 1;
       setDpr(1);
     }
-  }, []);
+  }, [lite]);
 
   return (
     <Canvas
@@ -1823,6 +1867,7 @@ export default function MacBook3D({
               projectIdx={i}
               settledIdx={settledIdx}
               reg={reg}
+              lite={lite}
             />
           ))}
           {/* mounted after the units so it reads their freshly-posed
@@ -1836,17 +1881,22 @@ export default function MacBook3D({
               ~3.25): the flanks now live at ±6.6, well outside it, so the
               contact shadow can no longer bleed onto an adjacent device.
               renderOrder -1 keeps it behind every laptop in the draw. */}
-          <ContactShadows
-            frames={1}
-            position={[0, 0.004, 0]}
-            opacity={0.5}
-            scale={6.5}
-            blur={3}
-            far={2.6}
-            resolution={256}
-            color="#000000"
-            renderOrder={-1}
-          />
+          {/* lite phones skip the contact shadow entirely — the laptop hovers
+              in a spotlight pool, so its ground shadow is a subtlety a phone
+              can do without */}
+          {!lite && (
+            <ContactShadows
+              frames={1}
+              position={[0, 0.004, 0]}
+              opacity={0.5}
+              scale={6.5}
+              blur={3}
+              far={2.6}
+              resolution={256}
+              color="#000000"
+              renderOrder={-1}
+            />
+          )}
           {/* the companion iPhone is a flat DOM element (iphone.png frame +
               mobile media) rendered by SelectedWork, NOT a 3D model — the
               WebGL phone had unfixable DOM-overlay occlusion/sorting issues */}
