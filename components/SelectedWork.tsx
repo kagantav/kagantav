@@ -266,7 +266,20 @@ function DevicePair({
 export default function SelectedWork() {
   const { lang, t } = useLang();
   const sectionRef = useRef<HTMLElement>(null);
-  const nearStage = useNearViewport(sectionRef);
+  /* Mount the showcase EARLY. Its one-time cost — 22 shader links plus the
+     MacBook's texture uploads — is what freezes the section on arrival on a
+     phone. A margin this wide makes the canvas "near" while the visitor is
+     still on the hero (scroll 0, behind the preloader), so that cost is paid
+     under the "Yükleniyor" curtain and the section is already warm by the
+     time they scroll to it. The archive (10 viewports down) stays out of
+     range, so there are never three live contexts. */
+  const nearStage = useNearViewport(sectionRef, "260% 0px 260% 0px");
+  /* …and never unmount it: a remount would recompile every shader and freeze
+     all over again. Once warm, stay warm. */
+  const [everStage, setEverStage] = useState(false);
+  useEffect(() => {
+    if (nearStage) setEverStage(true);
+  }, [nearStage]);
 
   const pairARef = useRef<HTMLDivElement>(null);
   const phoneARef = useRef<HTMLDivElement>(null);
@@ -348,15 +361,29 @@ export default function SelectedWork() {
      and remounted while the laptop is travelling. */
   const [overlayProj, setOverlayProj] = useState(0);
   const overlayProjRef = useRef(0);
+  /* The overlay is ONE shared <video>. When overlayProj changes its src, the
+     browser keeps painting the previous project's last decoded frame until
+     the new source is ready (~1s) — and by then the overlay is already
+     perspective-mapped onto the NEXT laptop, so on a fast scroll the old site
+     briefly appears on the new laptop's screen. Two guards kill it: the ref
+     the ticker reads only advances once the new media has actually loaded
+     (below), and the media element is keyed so the stale frame is dropped on
+     switch. Until the new frame is ready the fade stays 0 and the correct,
+     phase-synced 3D screen texture shows through — same content, a touch
+     softer. */
+  const overlayReadyRef = useRef(true);
   useEffect(() => {
     if (settled >= 0) {
       setOverlayProj(settled);
-      overlayProjRef.current = settled;
       /* new settle = new media epoch: every screen starts its clip from the
          FIRST frame, and all devices share the same phase */
       swScroll.mediaEpoch = performance.now();
     }
   }, [settled]);
+  /* a project switch means the overlay's media is momentarily stale */
+  useEffect(() => {
+    overlayReadyRef.current = false;
+  }, [overlayProj]);
 
   /* videos play only on the settled pair */
   useEffect(() => {
@@ -701,7 +728,7 @@ export default function SelectedWork() {
                (physical travel starts at |d| = 0.15), so the overlay can
                stay up until just before motion begins */
             const settleFade =
-              q.on && q.idx === overlayProjRef.current
+              q.on && q.idx === overlayProjRef.current && overlayReadyRef.current
                 ? 1 - clamp01((Math.abs(q.d) - 0.11) / 0.035)
                 : 0;
             /* ?perf=3 — hold the overlay down. It is a 1600×1040 promoted
@@ -843,7 +870,7 @@ export default function SelectedWork() {
         />
 
         {/* real 3D MacBooks — full-stage canvas so they can enter/exit */}
-        {nearStage && <MacBook3D aIdx={aIdx} bIdx={bIdx} settledIdx={settled} />}
+        {everStage && <MacBook3D aIdx={aIdx} bIdx={bIdx} settledIdx={settled} />}
 
         {/* DOM screen overlay — the settled MacBook's display as a real
             <video> inside a macOS + Safari chrome, perspective-mapped
@@ -912,20 +939,31 @@ export default function SelectedWork() {
             <div className={styles.screenOvViewport}>
               {(() => {
                 const m = FEATURED_PROJECTS[overlayProj]?.desktopMedia;
+                /* the media is keyed by project so React remounts it on a
+                   switch (dropping the previous frame instead of repainting
+                   the same element with a new src). Once it can paint its own
+                   first frame, the ticker is cleared to fade the overlay in
+                   and the ref advances to this project. */
+                const ready = () => {
+                  overlayProjRef.current = overlayProj;
+                  overlayReadyRef.current = true;
+                };
                 if (m?.type === "video" && m.src)
                   return (
                     <video
+                      key={overlayProj}
                       ref={screenOvVideoRef}
                       src={m.src}
                       muted
                       loop
                       playsInline
                       preload="auto"
+                      onLoadedData={ready}
                     />
                   );
                 if (m?.type === "image" && m.src)
                   // eslint-disable-next-line @next/next/no-img-element
-                  return <img src={m.src} alt="" />;
+                  return <img key={overlayProj} src={m.src} alt="" onLoad={ready} />;
                 return null;
               })()}
             </div>

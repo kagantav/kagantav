@@ -1604,6 +1604,55 @@ function TextureWarmup() {
   return null;
 }
 
+/**
+ * Compile every shader and upload every texture in the scene NOW, up front.
+ *
+ * With checkShaderErrors off, three no longer blocks on the link result — but
+ * that also means the driver defers the real compile until the program is
+ * first drawn. This canvas mounts off-screen under the preloader (wide
+ * near-viewport margin), and an off-screen canvas is never drawn, so the
+ * whole compile + upload bill was simply moving to the first on-screen frame:
+ * the freeze on arrival.
+ *
+ * gl.compileAsync walks the scene and compiles/uploads everything without a
+ * draw, off the main thread where the driver supports parallel compile. So
+ * the cost is paid here, behind the curtain, and arrival is warm. On a build
+ * of three without compileAsync it falls back to pumping a few off-screen
+ * frames, which forces the same first-draw compile early.
+ */
+function ShaderWarmup() {
+  const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
+  const camera = useThree((s) => s.camera);
+  const invalidate = useThree((s) => s.invalidate);
+  useEffect(() => {
+    let alive = true;
+    const r = gl as unknown as {
+      compileAsync?: (s: THREE.Object3D, c: THREE.Camera) => Promise<unknown>;
+    };
+    if (typeof r.compileAsync === "function") {
+      r.compileAsync(scene, camera).then(() => {
+        if (alive) invalidate();
+      });
+      return () => {
+        alive = false;
+      };
+    }
+    let n = 0;
+    let raf = 0;
+    const pump = () => {
+      invalidate();
+      if (alive && ++n < 60) raf = requestAnimationFrame(pump);
+    };
+    raf = requestAnimationFrame(pump);
+    return () => {
+      alive = false;
+      cancelAnimationFrame(raf);
+    };
+  }, [gl, scene, camera, invalidate]);
+  return null;
+}
+
 /* ════════════════════════════════════════════════
    Stage placement + canvas shell
    ════════════════════════════════════════════════ */
@@ -1805,6 +1854,7 @@ export default function MacBook3D({
 
         <CameraRig reg={reg} phone={phone} ceiling={ceiling} />
         <TextureWarmup />
+        <ShaderWarmup />
       </Suspense>
     </Canvas>
   );
