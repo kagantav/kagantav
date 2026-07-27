@@ -64,8 +64,12 @@ export default function ContactSection() {
       const r = el.getBoundingClientRect();
       const vh = window.innerHeight;
 
-      /* reveal only while the section overlaps the viewport */
-      const overlaps = r.top < vh && r.bottom > 0;
+      /* reveal only while the section overlaps the viewport. The 4px inset
+         matters: at first paint the document is still short (the heavy
+         sections mount a beat later) and this section sits EXACTLY at the
+         fold — a fractional-pixel rounding below vh must not flash the
+         fixed stage over the whole site. */
+      const overlaps = r.top < vh - 4 && r.bottom > 4;
       if (overlaps !== shown) {
         shown = overlaps;
         gsap.to(stage, { autoAlpha: overlaps ? 1 : 0, duration: 0.25, overwrite: true });
@@ -90,11 +94,18 @@ export default function ContactSection() {
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll);
+    /* the sections above mount and pin AFTER this effect, each time moving
+       this section thousands of pixels down. No scroll event fires for
+       that — so a stale verdict from the short document would stick until
+       the user scrolls. Re-evaluate whenever the layout itself changes. */
+    const ro = new ResizeObserver(onScroll);
+    ro.observe(document.body);
     tick();
 
     return () => {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
+      ro.disconnect();
       if (raf) cancelAnimationFrame(raf);
     };
   }, []);
