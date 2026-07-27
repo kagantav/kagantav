@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { ARCHIVE_PROJECTS, pick, pickList, type ArchiveProject } from "./projects";
 import { useLang } from "./i18n";
 import { scrollBridge } from "./scrollBridge";
 import styles from "./MobileArchive.module.css";
+
+import macFrame from "@/public/assets/macbook.png";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -150,35 +153,58 @@ export default function MobileArchive() {
         ))}
       </div>
 
-      {/* ── focus view ── */}
+      {/* ── focus view: the tapped site presented on the gold MacBook, the
+          same staging as the showcase, over an accent-tinted spotlight ── */}
       {active && (
-        <div className={styles.focus} role="dialog" aria-label={active.name}>
-          <div className={styles.focusMedia} style={{ "--accent": active.accentColor } as React.CSSProperties}>
-            {active.video ? (
-              <video src={active.video} muted loop playsInline autoPlay poster={active.thumb ?? undefined} />
-            ) : active.thumb ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={active.thumb} alt="" />
-            ) : (
-              <span className={styles.fallback}>{initials(active.name)}</span>
-            )}
-          </div>
-          <div className={styles.focusBody}>
-            <p className={styles.focusNum}>
-              {pad(ARCHIVE_PROJECTS.indexOf(active) + 1)} / {pad(ARCHIVE_PROJECTS.length)}
-            </p>
-            <h3 className={styles.focusName}>{active.name}</h3>
-            <p className={styles.focusCat}>
-              {pick(active.category, lang).toUpperCase()} · {active.year}
-            </p>
-            <ul className={styles.chips}>
-              {pickList(active.stack, lang).map((s) => (
-                <li key={s}>{s}</li>
-              ))}
-            </ul>
-            <div className={styles.focusActions}>
+        <div
+          className={styles.focus}
+          role="dialog"
+          aria-label={active.name}
+          style={{ "--accent": active.accentColor } as React.CSSProperties}
+          onClick={(e) => {
+            /* tapping the dark stage (not the content) closes */
+            if (e.target === e.currentTarget) setActive(null);
+          }}
+        >
+          <div className={styles.focusGlow} aria-hidden="true" />
+          <button
+            className={styles.focusClose}
+            onClick={() => setActive(null)}
+            aria-label={t.archive.close}
+          >
+            ✕
+          </button>
+
+          <div className={styles.focusInner}>
+            <div className={styles.focusMac}>
+              <div className={styles.focusMacScreen}>
+                {active.video ? (
+                  <video src={active.video} muted loop playsInline autoPlay poster={active.thumb ?? undefined} />
+                ) : active.thumb ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={active.thumb} alt="" />
+                ) : (
+                  <span className={styles.fallback}>{initials(active.name)}</span>
+                )}
+              </div>
+              <Image src={macFrame} alt="" className={styles.focusMacFrame} sizes="94vw" />
+            </div>
+
+            <div className={styles.focusBody}>
+              <p className={styles.focusNum}>
+                <em>{pad(ARCHIVE_PROJECTS.indexOf(active) + 1)}</em> / {pad(ARCHIVE_PROJECTS.length)}
+              </p>
+              <h3 className={styles.focusName}>{active.name}</h3>
+              <p className={styles.focusCat}>
+                {pick(active.category, lang).toUpperCase()} · {active.year}
+              </p>
+              <ul className={styles.chips}>
+                {pickList(active.stack, lang).map((s) => (
+                  <li key={s}>{s}</li>
+                ))}
+              </ul>
               {active.liveUrl && (
-                <a href={active.liveUrl} target="_blank" rel="noreferrer" className={styles.visit}>
+                <a href={active.liveUrl} target="_blank" rel="noreferrer" className={styles.focusVisit}>
                   {t.archive.visit}
                   <svg viewBox="0 0 14 14" aria-hidden="true">
                     <path
@@ -192,9 +218,6 @@ export default function MobileArchive() {
                   </svg>
                 </a>
               )}
-              <button className={styles.close} onClick={() => setActive(null)}>
-                {t.archive.close} ✕
-              </button>
             </div>
           </div>
         </div>

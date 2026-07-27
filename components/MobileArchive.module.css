@@ -172,19 +172,20 @@
   color: var(--ink-faint);
 }
 
-/* ── focus view ── */
+/* ── focus view: cinematic stage ── */
 .focus {
   position: fixed;
   inset: 0;
   z-index: 150;
   display: flex;
   flex-direction: column;
-  background: rgba(4, 3, 2, 0.96);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  animation: focusIn 0.3s ease;
+  justify-content: center;
+  background: rgba(4, 3, 2, 0.97);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  animation: focusIn 0.32s ease;
   overflow-y: auto;
-  padding: max(16px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom));
+  padding: max(20px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom));
 }
 
 @keyframes focusIn {
@@ -196,22 +197,90 @@
   }
 }
 
-.focusMedia {
-  position: relative;
-  flex: 0 0 auto;
-  aspect-ratio: 16 / 10;
-  overflow: hidden;
-  border-radius: 16px;
-  border: 1px solid rgba(216, 169, 79, 0.3);
+/* accent-tinted spotlight pooling behind the laptop */
+.focusGlow {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
   background:
-    radial-gradient(90% 100% at 50% 0%, color-mix(in srgb, var(--accent, #d8a94f) 16%, transparent), transparent 70%),
-    #0a0805;
+    radial-gradient(
+      72% 46% at 50% 30%,
+      color-mix(in srgb, var(--accent, #d8a94f) 20%, transparent),
+      transparent 74%
+    ),
+    radial-gradient(
+      60% 30% at 50% 88%,
+      rgba(216, 169, 79, 0.08),
+      transparent 70%
+    );
+  filter: blur(4px);
 }
 
-.focusMedia img,
-.focusMedia video {
+.focusClose {
+  position: fixed;
+  top: max(16px, env(safe-area-inset-top));
+  right: 16px;
+  z-index: 3;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(216, 169, 79, 0.35);
+  border-radius: 50%;
+  background: rgba(10, 8, 5, 0.72);
+  color: var(--gold);
+  font-size: 16px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.focusInner {
+  position: relative;
+  margin: auto 0; /* vertical centring that still scrolls on tiny screens */
+  animation: focusRise 0.42s cubic-bezier(0.22, 0.9, 0.3, 1);
+}
+
+@keyframes focusRise {
+  from {
+    opacity: 0;
+    transform: translateY(22px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ── the tapped site presented on the gold MacBook ── */
+.focusMac {
+  position: relative;
+  width: 100%;
+}
+
+.focusMacFrame {
+  position: relative;
+  width: 100%;
+  height: auto;
+  z-index: 2;
+  pointer-events: none;
+  filter: drop-shadow(0 34px 54px rgba(0, 0, 0, 0.7));
+}
+
+/* screen opening measured from macbook.png alpha */
+.focusMacScreen {
   position: absolute;
-  inset: 0;
+  left: 13.3%;
+  top: 3.73%;
+  width: 74%;
+  height: 66.55%;
+  z-index: 1;
+  overflow: hidden;
+  border-radius: 6px 6px 0 0;
+  background: #050302;
+}
+
+.focusMacScreen img,
+.focusMacScreen video {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -219,7 +288,8 @@
 }
 
 .focusBody {
-  padding: 20px 6px 8px;
+  padding: 26px 6px 0;
+  text-align: center;
 }
 
 .focusNum {
@@ -228,25 +298,41 @@
   color: var(--ink-faint);
 }
 
+.focusNum em {
+  font-style: normal;
+  font-size: 26px;
+  font-weight: 700;
+  background: var(--gold-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin-right: 5px;
+}
+
 .focusName {
-  margin-top: 6px;
+  margin-top: 8px;
   font-family: var(--font-display);
-  font-size: clamp(24px, 6.6vw, 32px);
+  font-size: clamp(26px, 7.4vw, 34px);
+  line-height: 1.12;
   font-weight: 600;
-  color: #efe7d5;
+  background: linear-gradient(120deg, #f4ead6 30%, #caa55e 85%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .focusCat {
-  margin-top: 6px;
+  margin-top: 8px;
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.24em;
   color: var(--gold);
 }
 
 .chips {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 8px;
   margin-top: 16px;
   list-style: none;
@@ -262,45 +348,30 @@
   color: var(--ink-dim);
 }
 
-.focusActions {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-top: 24px;
-}
-
-.visit {
+/* primary action — the filled gold treatment of the contact CTA */
+.focusVisit {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
-  padding: 14px 22px;
-  border: 1px solid rgba(216, 169, 79, 0.5);
-  border-radius: 12px;
-  font-size: 12.5px;
+  margin-top: 24px;
+  padding: 16px 30px;
+  border-radius: 999px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
   text-decoration: none;
-  color: var(--gold);
-  background: linear-gradient(120deg, rgba(216, 169, 79, 0.12), rgba(216, 169, 79, 0.03));
+  color: #1c1204;
+  background: var(--gold-grad);
+  box-shadow:
+    0 12px 30px rgba(216, 169, 79, 0.28),
+    inset 0 1px 0 rgba(255, 236, 200, 0.65);
 }
 
-.visit svg {
+.focusVisit svg {
   width: 12px;
   height: 12px;
-}
-
-.close {
-  padding: 14px 18px;
-  border: 1px solid rgba(236, 228, 212, 0.2);
-  border-radius: 12px;
-  background: none;
-  font-size: 12.5px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ink-dim);
-  cursor: pointer;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -310,7 +381,8 @@
     transform: none;
     transition: none;
   }
-  .focus {
+  .focus,
+  .focusInner {
     animation: none;
   }
 }
