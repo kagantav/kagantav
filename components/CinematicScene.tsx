@@ -326,9 +326,10 @@ export default function CinematicScene() {
                 />
               </svg>
             </a>
+            {/* no `download` attribute on purpose: the CV opens in a new tab
+                in the browser's PDF viewer; saving stays one click away there */}
             <a
               href={t.hero.cvHref}
-              download
               target="_blank"
               rel="noreferrer"
               className={styles.ctaGhost}
@@ -336,7 +337,7 @@ export default function CinematicScene() {
               {t.hero.ctaCv}
               <svg viewBox="0 0 14 14" aria-hidden="true">
                 <path
-                  d="M7 1.5v8m0 0L3.8 6.3M7 9.5l3.2-3.2M2 12.5h10"
+                  d="M2 12L12 2M12 2H4.5M12 2v7.5"
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="1.5"
