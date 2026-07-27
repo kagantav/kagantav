@@ -41,18 +41,20 @@ export default function ContactSection() {
        getBoundingClientRect during scroll always reflects the true, pinned
        layout, so driving the dive directly from it is immune to when the
        sections above mount, grow or pin. */
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      gsap.set([stage, glow, content], {
-        autoAlpha: 1,
-        opacity: 1,
-        scale: 1,
-        filter: "none",
-      });
-      return;
-    }
+    /* Reduced motion drops the DIVE, never the overlap gate. The old branch
+       simply set the whole fixed stage visible — which, with animations off
+       at the OS level (common on modest laptops), meant the closer covered
+       the entire site from the first paint and scrolling appeared to do
+       nothing. Every machine gets the same reveal logic; reduce only makes
+       the copy arrive settled instead of diving in. */
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     gsap.set(stage, { autoAlpha: 0 });
     gsap.set(content, { transformOrigin: "50% 42%" });
+    if (reduce) {
+      gsap.set(content, { scale: 1, opacity: 1, filter: "none" });
+      gsap.set(glow, { opacity: 1, scale: 1 });
+    }
 
     const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
     const easeOut = gsap.parseEase("power2.out");
@@ -72,9 +74,13 @@ export default function ContactSection() {
       const overlaps = r.top < vh - 4 && r.bottom > 4;
       if (overlaps !== shown) {
         shown = overlaps;
-        gsap.to(stage, { autoAlpha: overlaps ? 1 : 0, duration: 0.25, overwrite: true });
+        gsap.to(stage, {
+          autoAlpha: overlaps ? 1 : 0,
+          duration: reduce ? 0 : 0.25,
+          overwrite: true,
+        });
       }
-      if (!overlaps) return;
+      if (!overlaps || reduce) return;
 
       /* the dive: same curves as the old scrubbed tweens
          (top bottom → top 42% for the glow, top bottom → top 20% for the
