@@ -1,0 +1,293 @@
+/* ════════════════════════════════════════════════
+   Mobile Selected Work — DOM/CSS build (no WebGL)
+   ════════════════════════════════════════════════ */
+
+.section {
+  position: relative;
+  padding: clamp(72px, 14vh, 120px) var(--gutter) 40px;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+/* ── section head (mirrors the desktop panel typography) ── */
+.head {
+  margin-bottom: 46px;
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.eyebrow span {
+  width: 44px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--gold), transparent);
+  box-shadow: 0 0 10px rgba(216, 169, 79, 0.5);
+}
+
+.title {
+  margin-top: 14px;
+  font-family: var(--font-display);
+  font-size: clamp(26px, 7vw, 34px);
+  line-height: 1.14;
+  font-weight: 600;
+  background: linear-gradient(120deg, #f4ead6 30%, #caa55e 85%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ── one project card ── */
+.card {
+  margin-bottom: clamp(64px, 12vh, 110px);
+}
+
+/* CSS-only reveal; .in is added by an IntersectionObserver */
+.head,
+.card {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.22, 0.9, 0.3, 1);
+}
+
+.in {
+  opacity: 1;
+  transform: none;
+}
+
+/* ── device composition ── */
+.deviceStage {
+  position: relative;
+  margin-bottom: 26px;
+  /* room for the phone hanging over the laptop's lower-right corner */
+  padding: 4% 0 12%;
+}
+
+.glow {
+  position: absolute;
+  inset: -6% -10%;
+  background: radial-gradient(
+    58% 52% at 50% 44%,
+    color-mix(in srgb, var(--accent, #d8a94f) 17%, transparent),
+    transparent 78%
+  );
+  filter: blur(6px);
+  pointer-events: none;
+}
+
+.mac {
+  position: relative;
+  width: 100%;
+}
+
+.macFrame {
+  position: relative;
+  width: 100%;
+  height: auto;
+  z-index: 2;
+  pointer-events: none;
+  filter: drop-shadow(0 26px 40px rgba(0, 0, 0, 0.55));
+}
+
+/* screen opening measured from macbook.png alpha: 13.3% / 3.73%, 74% × 66.55% */
+.macScreen {
+  position: absolute;
+  left: 13.3%;
+  top: 3.73%;
+  width: 74%;
+  height: 66.55%;
+  z-index: 1;
+  overflow: hidden;
+  border-radius: 6px 6px 0 0;
+  background: #050302;
+}
+
+.macScreen video,
+.macScreen img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+}
+
+.screenFallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+  font-family: var(--font-display);
+  font-size: 15px;
+  color: var(--ink-dim);
+  background: radial-gradient(80% 90% at 50% 0%, #171009, #060403);
+}
+
+.screenFallback span {
+  font-size: 34px;
+  font-weight: 700;
+  background: var(--gold-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* companion iPhone over the laptop's lower right, like the desktop stage */
+.phone {
+  position: absolute;
+  right: 2%;
+  bottom: 0;
+  width: 27%;
+  aspect-ratio: 658 / 1333;
+  z-index: 3;
+}
+
+.phoneFrame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  z-index: 2;
+  pointer-events: none;
+  filter: drop-shadow(0 22px 34px rgba(0, 0, 0, 0.6));
+}
+
+/* screen glass measured from iphone.png alpha */
+.phoneScreen {
+  position: absolute;
+  left: 4.4%;
+  top: 1.5%;
+  width: 91.2%;
+  height: 97%;
+  overflow: hidden;
+  border-radius: 13.5% / 6.6%;
+  background: #050302;
+  z-index: 1;
+}
+
+.phoneScreen video,
+.phoneScreen img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+}
+
+/* ── info panel ── */
+.panel {
+  position: relative;
+  padding: 22px 22px 26px;
+  border: 1px solid rgba(216, 169, 79, 0.22);
+  border-radius: 18px;
+  background: linear-gradient(160deg, rgba(24, 18, 10, 0.6), rgba(8, 6, 3, 0.85));
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.counter {
+  font-family: var(--font-display);
+  font-size: 15px;
+  color: var(--ink-faint);
+}
+
+.counter em {
+  font-style: normal;
+  font-size: 30px;
+  font-weight: 700;
+  background: var(--gold-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin-right: 6px;
+}
+
+.name {
+  margin-top: 8px;
+  font-family: var(--font-display);
+  font-size: clamp(24px, 6.4vw, 30px);
+  font-weight: 600;
+  color: #efe7d5;
+}
+
+.cat {
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  color: var(--gold);
+}
+
+.desc {
+  margin-top: 12px;
+  font-size: 14.5px;
+  line-height: 1.7;
+  color: var(--ink-dim);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+  list-style: none;
+  padding: 0;
+}
+
+.chips li {
+  padding: 7px 14px;
+  border: 1px solid rgba(216, 169, 79, 0.28);
+  border-radius: 999px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--ink-dim);
+}
+
+.visit {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+  padding: 14px 22px;
+  border: 1px solid rgba(216, 169, 79, 0.5);
+  border-radius: 12px;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--gold);
+  background: linear-gradient(120deg, rgba(216, 169, 79, 0.12), rgba(216, 169, 79, 0.03));
+}
+
+.visit svg {
+  width: 12px;
+  height: 12px;
+}
+
+.soon {
+  display: inline-block;
+  margin-top: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .head,
+  .card {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

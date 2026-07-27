@@ -1,0 +1,316 @@
+/* ════════════════════════════════════════════════
+   Mobile Full Archive — gallery build (no WebGL)
+   ════════════════════════════════════════════════ */
+
+.section {
+  position: relative;
+  padding: clamp(64px, 12vh, 110px) var(--gutter) clamp(72px, 14vh, 120px);
+  background: var(--bg);
+}
+
+.head {
+  margin-bottom: 34px;
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.eyebrow span {
+  width: 44px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--gold), transparent);
+  box-shadow: 0 0 10px rgba(216, 169, 79, 0.5);
+}
+
+.count {
+  font-style: normal;
+  padding: 3px 11px;
+  border: 1px solid rgba(216, 169, 79, 0.4);
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.title {
+  margin-top: 14px;
+  font-family: var(--font-display);
+  font-size: clamp(26px, 7vw, 34px);
+  line-height: 1.14;
+  font-weight: 600;
+  background: linear-gradient(120deg, #f4ead6 30%, #caa55e 85%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ── gallery ── */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 26px;
+}
+
+@media (min-width: 560px) {
+  .grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 22px;
+  }
+}
+
+.card {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+
+  opacity: 0;
+  transform: translateY(26px);
+  transition: opacity 0.65s ease, transform 0.65s cubic-bezier(0.22, 0.9, 0.3, 1);
+}
+
+.head {
+  opacity: 0;
+  transform: translateY(26px);
+  transition: opacity 0.65s ease, transform 0.65s cubic-bezier(0.22, 0.9, 0.3, 1);
+}
+
+.in {
+  opacity: 1;
+  transform: none;
+}
+
+.media {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid rgba(216, 169, 79, 0.24);
+  background:
+    radial-gradient(90% 100% at 50% 0%, color-mix(in srgb, var(--accent, #d8a94f) 16%, transparent), transparent 70%),
+    #0a0805;
+  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.45);
+}
+
+.media img,
+.media video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+}
+
+/* the loop sits ABOVE the screenshot and only appears once it truly plays */
+.media video {
+  opacity: 0;
+  transition: opacity 0.45s ease;
+}
+
+.vidOn {
+  opacity: 1 !important;
+}
+
+.fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  background: var(--gold-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.num {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: rgba(236, 228, 212, 0.8);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+}
+
+.meta {
+  display: block;
+  padding: 12px 4px 0;
+}
+
+.cardName {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+  color: #efe7d5;
+}
+
+.cardCat {
+  display: block;
+  margin-top: 3px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+}
+
+/* ── focus view ── */
+.focus {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  display: flex;
+  flex-direction: column;
+  background: rgba(4, 3, 2, 0.96);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  animation: focusIn 0.3s ease;
+  overflow-y: auto;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom));
+}
+
+@keyframes focusIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.focusMedia {
+  position: relative;
+  flex: 0 0 auto;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid rgba(216, 169, 79, 0.3);
+  background:
+    radial-gradient(90% 100% at 50% 0%, color-mix(in srgb, var(--accent, #d8a94f) 16%, transparent), transparent 70%),
+    #0a0805;
+}
+
+.focusMedia img,
+.focusMedia video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+}
+
+.focusBody {
+  padding: 20px 6px 8px;
+}
+
+.focusNum {
+  font-family: var(--font-display);
+  font-size: 14px;
+  color: var(--ink-faint);
+}
+
+.focusName {
+  margin-top: 6px;
+  font-family: var(--font-display);
+  font-size: clamp(24px, 6.6vw, 32px);
+  font-weight: 600;
+  color: #efe7d5;
+}
+
+.focusCat {
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  color: var(--gold);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+  list-style: none;
+  padding: 0;
+}
+
+.chips li {
+  padding: 7px 14px;
+  border: 1px solid rgba(216, 169, 79, 0.28);
+  border-radius: 999px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--ink-dim);
+}
+
+.focusActions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 24px;
+}
+
+.visit {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 22px;
+  border: 1px solid rgba(216, 169, 79, 0.5);
+  border-radius: 12px;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--gold);
+  background: linear-gradient(120deg, rgba(216, 169, 79, 0.12), rgba(216, 169, 79, 0.03));
+}
+
+.visit svg {
+  width: 12px;
+  height: 12px;
+}
+
+.close {
+  padding: 14px 18px;
+  border: 1px solid rgba(236, 228, 212, 0.2);
+  border-radius: 12px;
+  background: none;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .head {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .focus {
+    animation: none;
+  }
+}

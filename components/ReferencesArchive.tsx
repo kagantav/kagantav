@@ -7,6 +7,8 @@ import * as THREE from "three";
 import { ARCHIVE_PROJECTS, pick, pickList, type ArchiveProject } from "./projects";
 import { useLang } from "./i18n";
 import { useContextRecovery, useNearViewport } from "./useCanvasLifecycle";
+import { useIsMobile } from "./useIsMobile";
+import MobileArchive from "./MobileArchive";
 import { scrollBridge } from "./scrollBridge";
 import styles from "./ReferencesArchive.module.css";
 
@@ -319,7 +321,15 @@ function Rig({
  * panel in depth; scrolling flies the camera forward through them, out of the
  * fog. Scales to ~20 entries: just append to ARCHIVE_PROJECTS.
  */
+/** Phones get the light gallery build (no WebGL); desktop keeps the 3D
+ *  fly-through. See SelectedWork for the same split and its rationale. */
 export default function ReferencesArchive() {
+  const isMobile = useIsMobile();
+  if (isMobile === null) return null;
+  return isMobile ? <MobileArchive /> : <DesktopReferencesArchive />;
+}
+
+function DesktopReferencesArchive() {
   const { lang, t } = useLang();
   const sectionRef = useRef<HTMLElement>(null);
   const headRef = useRef<HTMLDivElement>(null);

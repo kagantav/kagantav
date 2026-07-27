@@ -19,6 +19,8 @@ import {
 } from "./projects";
 import { useLang } from "./i18n";
 import { useNearViewport } from "./useCanvasLifecycle";
+import { useIsMobile } from "./useIsMobile";
+import MobileShowcase from "./MobileShowcase";
 import styles from "./SelectedWork.module.css";
 import MacBook3D, { syncVideoPhase } from "./MacBook3D";
 import { invalidate } from "@react-three/fiber";
@@ -263,7 +265,23 @@ function DevicePair({
    function of scroll progress — fully reversible, no snapping.
    ════════════════════════════════════════════════ */
 
+/**
+ * Split by device class: phones get a DOM/CSS build of the showcase (no
+ * WebGL — three simultaneous GL scenes made the section freeze on an
+ * iPhone), desktop keeps the full 3D stage. `null` means the client has not
+ * measured yet; that frame is behind the preloader. ScrollTrigger.refresh()
+ * after the swap re-measures the pinned sections below the new content.
+ */
 export default function SelectedWork() {
+  const isMobile = useIsMobile();
+  useEffect(() => {
+    if (isMobile !== null) ScrollTrigger.refresh();
+  }, [isMobile]);
+  if (isMobile === null) return null;
+  return isMobile ? <MobileShowcase /> : <DesktopSelectedWork />;
+}
+
+function DesktopSelectedWork() {
   const { lang, t } = useLang();
   const sectionRef = useRef<HTMLElement>(null);
   /* Mount the showcase EARLY. Its one-time cost — 22 shader links plus the
