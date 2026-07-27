@@ -269,14 +269,12 @@ function DevicePair({
  * Split by device class: phones get a DOM/CSS build of the showcase (no
  * WebGL — three simultaneous GL scenes made the section freeze on an
  * iPhone), desktop keeps the full 3D stage. `null` means the client has not
- * measured yet; that frame is behind the preloader. ScrollTrigger.refresh()
- * after the swap re-measures the pinned sections below the new content.
+ * measured yet; that frame is behind the preloader. LayoutRefresh (page
+ * level) re-measures every ScrollTrigger when the document height settles,
+ * which covers this swap and the later pin-spacer insertions in one place.
  */
 export default function SelectedWork() {
   const isMobile = useIsMobile();
-  useEffect(() => {
-    if (isMobile !== null) ScrollTrigger.refresh();
-  }, [isMobile]);
   if (isMobile === null) return null;
   return isMobile ? <MobileShowcase /> : <DesktopSelectedWork />;
 }
