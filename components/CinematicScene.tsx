@@ -327,7 +327,7 @@ export default function CinematicScene() {
               </svg>
             </a>
             <a
-              href="/KAGANTAV-CV.pdf"
+              href={t.hero.cvHref}
               download
               target="_blank"
               rel="noreferrer"

@@ -35,6 +35,8 @@ export interface Copy {
     lede: string;
     ctaWork: string;
     ctaCv: string;
+    /** language-matched CV file under /public */
+    cvHref: string;
   };
   about: {
     eyebrow: string;
@@ -80,6 +82,7 @@ export const COPY: Record<Lang, Copy> = {
       lede: "Modern web teknolojileriyle kurumsal siteler, yönetim panelleri ve iş uygulamaları geliştiriyorum. Temiz kod, akıcı arayüzler ve uçtan uca teslim önceliğim.",
       ctaWork: "Projelerimi Gör",
       ctaCv: "CV İndir",
+      cvHref: "/KAGANTAV-CV.pdf",
     },
     about: {
       eyebrow: "Hakkımda",
@@ -141,6 +144,7 @@ export const COPY: Record<Lang, Copy> = {
       lede: "I build corporate websites, admin panels and business applications with modern web technologies. Clean code, fluid interfaces and end-to-end delivery come first.",
       ctaWork: "View My Work",
       ctaCv: "Download CV",
+      cvHref: "/KAGANTAV-CV-EN.pdf",
     },
     about: {
       eyebrow: "About Me",
