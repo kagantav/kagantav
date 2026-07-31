@@ -1,7 +1,7 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { Canvas, useFrame, useLoader, useThree } from "@react-three/fiber";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { PerformanceMonitor } from "@react-three/drei";
 import * as THREE from "three";
 import { ARCHIVE_PROJECTS, pick, pickList, type ArchiveProject } from "./projects";
@@ -90,10 +90,40 @@ function Screen({
   onOpen: (p: ArchiveProject) => void;
   activeIdRef: React.MutableRefObject<string | null>;
 }) {
-  const tex = useLoader(THREE.TextureLoader, item.src);
-  useMemo(() => {
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = 8;
+  /* NON-SUSPENDING texture load. These cards used to sit under one shared
+     <Suspense> and load via useLoader — so not a single card rendered until
+     every one of the 17 screenshots had downloaded. Unnoticeable on
+     localhost; on the real network a first-time visitor reaching the archive
+     saw only the background video for seconds ("kartlar çıkmıyor"). Now the
+     card frame renders immediately as a dark panel and its own screenshot
+     fades in the moment IT has arrived — no card waits for another. */
+  const [tex, setTex] = useState<THREE.Texture | null>(null);
+  useEffect(() => {
+    let disposed = false;
+    let loaded: THREE.Texture | null = null;
+    new THREE.TextureLoader().load(item.src, (t) => {
+      if (disposed) {
+        t.dispose();
+        return;
+      }
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.anisotropy = 8;
+      loaded = t;
+      setTex(t);
+    });
+    return () => {
+      disposed = true;
+      loaded?.dispose();
+    };
+  }, [item.src]);
+  /* adding a map to an EXISTING material changes its shader (USE_MAP), and
+     three only rebuilds it when needsUpdate is raised — without this the
+     late-arriving screenshot leaves the card a plain light panel forever */
+  useEffect(() => {
+    if (tex && baseMat.current) {
+      baseMat.current.map = tex;
+      baseMat.current.needsUpdate = true;
+    }
   }, [tex]);
   const grp = useRef<THREE.Group>(null);
   const hover = useRef(false); // ref, not state → no re-render, useFrame owns opacity
@@ -258,10 +288,13 @@ function Screen({
       >
         <planeGeometry args={[CARD_W, CARD_H]} />
         {/* rounded (alphaMap) + translucent; opacity is driven imperatively in
-            useFrame (focus / fade), so the initial value here is just a seed */}
+            useFrame (focus / fade), so the initial value here is just a seed.
+            Until the screenshot arrives the same panel renders as dark glass —
+            the card exists from the first frame either way. */}
         <meshBasicMaterial
           ref={baseMat}
-          map={tex}
+          map={tex ?? undefined}
+          color={tex ? "#ffffff" : "#16110c"}
           alphaMap={roundMask ?? undefined}
           transparent
           opacity={0.72}
@@ -395,6 +428,25 @@ function DesktopReferencesArchive() {
     });
   }, []);
   const endZ = -ARCHIVE_PROJECTS.length * SPACING - 4;
+
+  /* Warm the browser cache for every card screenshot well before the canvas
+     mounts. The texture loads above only START once the visitor is ~a screen
+     away from the archive, so a first-time visitor on a real connection used
+     to race the downloads — and won. Fetching them (low priority, after the
+     hero has had the network to itself) means the TextureLoader usually hits
+     the HTTP cache and the cards arrive already dressed. */
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      ARCHIVE_PROJECTS.forEach((p) => {
+        if (p.thumb) {
+          const img = new Image();
+          img.decoding = "async";
+          img.src = p.thumb;
+        }
+      });
+    }, 2500);
+    return () => window.clearTimeout(id);
+  }, []);
 
   /* scroll → progress (0 = entering, 1 = flown through) + header fade */
   useEffect(() => {
@@ -549,16 +601,17 @@ function DesktopReferencesArchive() {
             {/* transparent clear so the scroll-scrubbed video shows through;
                 fog still fades distant cards into the dark cosmic backdrop */}
             <fog attach="fog" args={["#050403", 16, 66]} />
-            <Suspense fallback={null}>
-              {items.map((it) => (
-                <Screen
-                  key={it.p.id}
-                  item={it}
-                  onOpen={setActive}
-                  activeIdRef={activeIdRef}
-                />
-              ))}
-            </Suspense>
+            {/* no Suspense on purpose: nothing in here suspends anymore, and
+                the old shared boundary was exactly what held every card back
+                until the slowest screenshot finished downloading */}
+            {items.map((it) => (
+              <Screen
+                key={it.p.id}
+                item={it}
+                onOpen={setActive}
+                activeIdRef={activeIdRef}
+              />
+            ))}
             <Rig progress={progress} endZ={endZ} activeIdRef={activeIdRef} />
           </Canvas>
         )}
