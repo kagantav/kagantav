@@ -26,7 +26,6 @@ import MacBook3D, { syncVideoPhase } from "./MacBook3D";
 import { invalidate } from "@react-three/fiber";
 import { swScroll } from "./swScrollBus";
 import { scrollBridge } from "./scrollBridge";
-import { perfFlags } from "./perfFlags";
 
 import iphoneFrame from "@/public/assets/iphone.png";
 
@@ -747,14 +746,7 @@ function DesktopSelectedWork() {
               q.on && q.idx === overlayProjRef.current && overlayReadyRef.current
                 ? 1 - clamp01((Math.abs(q.d) - 0.11) / 0.035)
                 : 0;
-            /* ?perf=3 — hold the overlay down. It is a 1600×1040 promoted
-               layer with a live video in it, so its rasterisation costs dpr²
-               (~15 megapixels on a dpr-3 phone against ~2 on a desktop);
-               this asks the phone whether that is the wall. The WebGL screen
-               keeps showing the same, phase-synced content underneath. */
-            const a = perfFlags().noOverlay
-              ? 0
-              : settleFade * (1 - clamp01(swScroll.live / 0.08));
+            const a = settleFade * (1 - clamp01(swScroll.live / 0.08));
             const vid = screenOvVideoRef.current;
             if (a > 0.001) {
               ov.style.opacity = String(a);

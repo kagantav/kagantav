@@ -7,7 +7,6 @@ import HeroRig3D from "./HeroRig3D";
 import { rigScroll } from "./rigScrollBus";
 import { useLang } from "./i18n";
 import { useNearViewport } from "./useCanvasLifecycle";
-import { perfFlags } from "./perfFlags";
 import styles from "./CinematicScene.module.css";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -62,14 +61,8 @@ export default function CinematicScene() {
   const { t } = useLang();
   const sceneRef = useRef<HTMLElement>(null);
   /* release the rig's WebGL context once the hero is well behind us, so the
-     showcase and archive scenes below have room on mobile.
-     ?perf=7 tightens the margin to nothing: measured in the showcase, the
-     hero canvas is still alive there (two live WebGL contexts), because 120%
-     of a tall phone viewport reaches a long way back. */
-  const nearRig = useNearViewport(
-    sceneRef,
-    perfFlags().dropHero ? "0px" : undefined
-  );
+     showcase and archive scenes below have room on mobile */
+  const nearRig = useNearViewport(sceneRef);
 
   useLayoutEffect(() => {
     const scene = sceneRef.current;

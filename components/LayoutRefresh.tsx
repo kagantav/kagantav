@@ -22,8 +22,6 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
  */
 export default function LayoutRefresh() {
   useEffect(() => {
-    /* TEMP debug bridge — remove with the ?perf switches */
-    (window as unknown as { __ST?: typeof ScrollTrigger }).__ST = ScrollTrigger;
     let lastH = document.body.scrollHeight;
     let t: number | undefined;
 
