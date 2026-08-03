@@ -29,10 +29,10 @@ const START_Z = 10;
 const CARD_W = 6.6;
 const CARD_H = (CARD_W * 10) / 16;
 
-/* a placeholder texture (initials on the accent) for sites with no thumb.
-   client-only (uses canvas); on the server the Canvas isn't rendered anyway */
-function makeInitialsURL(name: string, accent: string) {
-  if (typeof document === "undefined") return "";
+/* the branded initials panel: the accent-tinted card face used both as the
+   permanent face of thumb-less sites AND as every card's INSTANT stand-in
+   while its screenshot downloads. Drawn synchronously — no network. */
+function drawInitialsCanvas(name: string, accent: string) {
   const c = document.createElement("canvas");
   c.width = 640;
   c.height = 400;
@@ -48,7 +48,15 @@ function makeInitialsURL(name: string, accent: string) {
   x.textAlign = "center";
   x.textBaseline = "middle";
   x.fillText(initialsOf(name), 320, 210);
-  return c.toDataURL();
+  /* deliberately NO border stroke: edge-on cards render as a single texture
+     column, and a bright frame column reads as a glowing full-height stripe
+     in the corridor. The accent gradient + initials alone read clearly. */
+  return c;
+}
+
+function makeInitialsURL(name: string, accent: string) {
+  if (typeof document === "undefined") return "";
+  return drawInitialsCanvas(name, accent).toDataURL();
 }
 
 /* small rounded-corner alpha mask (client-only, built once) so the cards read
@@ -98,6 +106,19 @@ function Screen({
      card frame renders immediately as a dark panel and its own screenshot
      fades in the moment IT has arrived — no card waits for another. */
   const [tex, setTex] = useState<THREE.Texture | null>(null);
+  /* instant branded stand-in: the dark-glass fallback tried first was
+     invisible against the near-black backdrop, so a slow connection read as
+     "the archive is empty". The accent-tinted initials panel is unmissable
+     and renders on the very first frame, from memory. */
+  const placeholder = useMemo(() => {
+    if (typeof document === "undefined") return null;
+    const t = new THREE.CanvasTexture(
+      drawInitialsCanvas(item.p.name, item.p.accentColor)
+    );
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }, [item.p.name, item.p.accentColor]);
+  useEffect(() => () => placeholder?.dispose(), [placeholder]);
   useEffect(() => {
     let disposed = false;
     let loaded: THREE.Texture | null = null;
@@ -289,12 +310,11 @@ function Screen({
         <planeGeometry args={[CARD_W, CARD_H]} />
         {/* rounded (alphaMap) + translucent; opacity is driven imperatively in
             useFrame (focus / fade), so the initial value here is just a seed.
-            Until the screenshot arrives the same panel renders as dark glass —
-            the card exists from the first frame either way. */}
+            Until the screenshot arrives the branded initials panel shows —
+            the card is present and readable from the very first frame. */}
         <meshBasicMaterial
           ref={baseMat}
-          map={tex ?? undefined}
-          color={tex ? "#ffffff" : "#16110c"}
+          map={tex ?? placeholder ?? undefined}
           alphaMap={roundMask ?? undefined}
           transparent
           opacity={0.72}
@@ -444,7 +464,7 @@ function DesktopReferencesArchive() {
           img.src = p.thumb;
         }
       });
-    }, 2500);
+    }, 1200);
     return () => window.clearTimeout(id);
   }, []);
 
