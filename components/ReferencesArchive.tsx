@@ -93,10 +93,15 @@ function Screen({
   item,
   onOpen,
   activeIdRef,
+  allowVideo,
 }: {
   item: Item;
   onOpen: (p: ArchiveProject) => void;
   activeIdRef: React.MutableRefObject<string | null>;
+  /** false until the visitor nears the archive — the canvas itself mounts at
+   *  page load now, and the preview clips must not compete with the hero's
+   *  assets for first-load bandwidth */
+  allowVideo: boolean;
 }) {
   /* NON-SUSPENDING texture load. These cards used to sit under one shared
      <Suspense> and load via useLoader — so not a single card rendered until
@@ -152,9 +157,11 @@ function Screen({
   const focusT = useRef(0); // 0 = gallery slot, 1 = hero spot (eased for a soft arrival)
   const roundMask = roundMaskTexture();
 
-  /* optional looping preview video — only some projects have one */
+  /* optional looping preview video — only some projects have one; created
+     only once the visitor nears the archive (see allowVideo) */
   const video = useMemo(() => {
-    if (typeof document === "undefined" || !item.p.video) return null;
+    if (typeof document === "undefined" || !item.p.video || !allowVideo)
+      return null;
     const v = document.createElement("video");
     v.src = item.p.video;
     v.loop = true;
@@ -168,7 +175,7 @@ function Screen({
        small, 128KB-1MB) and by the narrow play corridor below. */
     v.preload = "auto";
     return v;
-  }, [item.p.video]);
+  }, [item.p.video, allowVideo]);
   const videoTex = useMemo(
     () => (video ? new THREE.VideoTexture(video) : null),
     [video]
@@ -393,9 +400,27 @@ function DesktopReferencesArchive() {
   const videoTime = useRef(0); // eased playhead we seek toward
   const blackoutRef = useRef<HTMLDivElement>(null); // fades the scene to black at the end
   const [inView, setInView] = useState(false);
-  /* only hold a WebGL context while the gallery is near the viewport, and
-     drop the dpr a notch if the device can't keep the fly-through smooth */
-  const near = useNearViewport(sectionRef);
+  /* The canvas mounts WITH THE PAGE, behind the preloader — no proximity
+     gate at all. Every lazier variant lost a race a fast scroller always
+     won; the last one lost it in a subtler way: the mount fired at the
+     right scroll position, but React starves a heavy normal-priority
+     render (17 cards, textures, GL init) while wheel events keep arriving,
+     so the canvas sat unrendered at the browser's 300×150 default until
+     scrolling STOPPED — measured, 2.5s after mount, exactly the "empty
+     stage" the reports described. Building it at load costs nothing the
+     visitor can see (the preloader covers it, and this component is
+     desktop-only, so phones never pay), and makes arrival timing
+     irrelevant forever. `near` still gates the card VIDEOS, so first-load
+     bandwidth stays with the hero. */
+  const near = useNearViewport(sectionRef, "400% 0px 400% 0px");
+  /* a short ALWAYS-render window right after mount: the first frames do the
+     real one-time work (canvas sizing, shader compile, 17 placeholder
+     texture uploads) while the preloader still covers the screen */
+  const [warming, setWarming] = useState(true);
+  useEffect(() => {
+    const id = window.setTimeout(() => setWarming(false), 1800);
+    return () => window.clearTimeout(id);
+  }, []);
   const { key: glKey, onCreated } = useContextRecovery();
   const [dpr, setDpr] = useState(1.6);
   /* the inspected project (null = none). `active` drives the DOM; the ref
@@ -567,10 +592,10 @@ function DesktopReferencesArchive() {
     if (!el) return;
     const io = new IntersectionObserver(
       ([e]) => setInView(e.isIntersecting),
-      // mount ~90% of a viewport BEFORE the section arrives so the one-time
-      // texture upload + WebGL context spike lands while the previous section
-      // is still on screen, not at the moment of entry
-      { rootMargin: "40% 0px 90% 0px" }
+      // resume rendering 1.5 viewports BEFORE the section arrives — the
+      // warm-up at mount already paid the one-time costs, so this only has
+      // to restart the (cheap) frame loop ahead of a fast scroller
+      { rootMargin: "40% 0px 150% 0px" }
     );
     io.observe(el);
     return () => io.disconnect();
@@ -604,11 +629,10 @@ function DesktopReferencesArchive() {
           <h2 className={styles.title}>{t.archive.title}</h2>
         </div>
 
-        {near && (
-          <Canvas
+        <Canvas
             key={glKey}
             className={styles.canvas}
-            frameloop={inView ? "always" : "never"}
+            frameloop={inView || warming ? "always" : "never"}
             dpr={dpr}
             onCreated={onCreated}
             gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }}
@@ -630,11 +654,11 @@ function DesktopReferencesArchive() {
                 item={it}
                 onOpen={setActive}
                 activeIdRef={activeIdRef}
+                allowVideo={near}
               />
             ))}
             <Rig progress={progress} endZ={endZ} activeIdRef={activeIdRef} />
           </Canvas>
-        )}
 
         {/* scroll-driven fade to pure black at the end of the fly-through */}
         <div ref={blackoutRef} className={styles.blackout} aria-hidden="true" />
